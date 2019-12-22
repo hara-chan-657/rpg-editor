@@ -11,6 +11,11 @@
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', 'RpgEditorController@selectProject')
+    ->middleware('selectProject');
+
+Route::post('/', 'RpgEditorController@index');
+
+Route::post('/getProjectData', 'RpgEditorController@getProjectData');
+
+Route::get('/getJson', 'RpgEditorController@getJson');
