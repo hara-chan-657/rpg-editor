@@ -61,7 +61,7 @@ function setEditMap(evt) {
 function loadJsonToObj() {
     for (var i=0; i<mapNames.length; i++) {
         //なんでホスト名は要らないのか不明!謎！
-        var url = '/projects/' + projectName.innerText + '/' + mapNames[i].innerText + '.json';
+        var url = 'projects/' + projectName.innerText + '/' + mapNames[i].innerText + '.json';
         var xhr = new XMLHttpRequest();
         //同期処理なので、ここで毎回取得
         xhr.open('GET', url, false);

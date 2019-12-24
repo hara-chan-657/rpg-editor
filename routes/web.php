@@ -17,5 +17,6 @@ Route::get('/', 'RpgEditorController@selectProject')
 Route::post('/', 'RpgEditorController@index');
 
 Route::post('/getProjectData', 'RpgEditorController@getProjectData');
+Route::get('/getProjectData', 'RpgEditorController@getProjectData');
 
 Route::get('/getJson', 'RpgEditorController@getJson');
