@@ -24,9 +24,16 @@
     </div>
     <div id="mapDataContainer">
         <p id="mapTypeName"></p>
+        <div id="eventTrigger">
+        </div>
         <div id="mapEvent">
-        
         </di>
+    </div>
+    <div id="editEventContainer">
+        <div id="eventLists">
+        </div>
+        <div id="editEvent">
+        </div>
     </div>
     <p id="projectName">{{$project}}</p>
     <ul>
@@ -41,6 +48,9 @@
     @foreach($jsonFiles as $jsonFile)
         <p>{{$jsonFile}}</p>
     @endforeach
+    </div>
+    <div id="saveProjectContainer">
+        <p id="saveProject">このマップを保存</p>
     </div>
 <script src="{{ asset('/js/rpg-editor.js') }}"></script>
 </body>

@@ -2,3 +2,23 @@
     width: 100px;
     height: 80px;
 }
+
+#addEvent {
+    background-color: orange;
+    color: white;
+    border-radius: 30px;
+    padding: 5px;
+    width: 130px;
+    cursor: pointer;
+    text-align: center;
+}
+
+#editEventContainer {
+    display: none;
+    background-color: teal;
+}
+
+#editEvent {
+    display: none;
+    background-color: green;
+}
