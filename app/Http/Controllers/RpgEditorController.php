@@ -37,7 +37,31 @@ class RpgEditorController extends Controller
         return view('rpg-editor.rpg-editor', ['pngFiles'=>$pngFiles, 'jsonFiles'=>$jsonFiles, 'project'=>$request->oldProjectName]);
     }
 
-    public function getJson(Request $request) {
+    //編集されたマップ情報を上書き＆rpg-playerに保存しにいく
+    //ディレクトリごとコピーしにいった方が早いかな？
+    //ディレクトリがあるなら編集したマップのjsonだけ、
+    //いやrsyncしても良い気が
+    public function saveEditedMap(Request $request) {
+        $mapJsonObj = $request->map_obj_data;
+        $savePath = './projects/' . $request->project_name . '/' . $request->map_save_name .'.json';
+        //マップオブジェクトデータを保存
+        $fp = fopen($savePath, "w");
+        fwrite($fp, $mapJsonObj);
+        fclose($fp);
 
+        //プロジェクトディレクトリをrpg-playerに同期
+        $fromDir = './projects/' . $request->project_name;
+        $toDir = '../../rpg-player/public/projects/' . $request->project_name;
+        //初回保存時のみ、プロジェクトディレクトリを作成
+        if (!file_exists($toDir)) {
+            mkdir($toDir, 0755);
+        }
+        //保存するマップ以外のマップのファイルも含めて同期(新たに追加したマップの処遇がめんどくさいので)
+        foreach(glob($fromDir . '/*') AS $file){
+            if(is_file($file)){
+                copy($file, $toDir.'/'.basename($file));
+            }
+        }
+        return redirect('/');
     }
 }

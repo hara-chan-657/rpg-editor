@@ -8,10 +8,16 @@
 
 //１マップ大きさ
 var mapLength = 32;
-//プロジェクトのマップのオブジェクト
+//プロジェクトのマップオブジェクト用配列
 var mapObj = [];
 //現在選択中マップオブジェクト;
-var currrentMapObj;
+var currrentMapObj = null;
+//現在選択中マップ名
+var currrentMapName;
+//現在選択中列番号
+var colNum;
+//現在選択中行番号
+var rowNum;
 //現在選択中マップチップ
 var currentMapTip;
 //セット可能イベントリスト
@@ -23,6 +29,7 @@ var settingEvents = [
     "進入",
     "エンカウントバトル",
     "対人バトル",
+    "道具発見",
 ]
 //トリガーリスト
 var triggerLists = [
@@ -52,8 +59,8 @@ var editEventContainer = document.getElementById('editEventContainer');
 var eventLists = document.getElementById('eventLists');
 //イベント編集
 var editEvent = document.getElementById('editEvent');
-//プロジェクト保存
-var saveProject = document.getElementById('saveProject');
+//マップ保存
+var saveMap = document.getElementById('saveMap');
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +71,7 @@ for (var i=0; i<maps.length; i++) {
 	maps[i].addEventListener('click', function(evt) {setEditMap(evt);}, false);
 }
 currentMapCanvas.addEventListener('click', function(evt) {showMapData(evt);}, false);
-saveProject.addEventListener('click', saveProject, false);
+saveMap.addEventListener('click', saveMapToServer, false);
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////　　以下ファンクション   //////////////////////////////////////////
@@ -76,6 +83,13 @@ function setDefault() {
 
 //編集するマップをセットする
 function setEditMap(evt) {
+    //本当は同じマップだったらスキップしたいけど後回し
+    if (currrentMapObj != null){
+        var res = confirm('プロジェクトに保存はしましたか？\nマップを変更すると変更内容は失われます。');
+        if (!res) {
+            return;
+        }    
+    }
     //現在マップをクリア    
     currentMapContext.clearRect(0, 0, currentMapCanvas.width, currentMapCanvas.height);
     //選択したマップを表示（キャンバス表示用に使う、非表示画像）
@@ -87,6 +101,7 @@ function setEditMap(evt) {
     currentMapContext.drawImage(currentMapImage, 0, 0);
     //現在選択中マップを更新
     currrentMapObj = mapObj[evt.target.alt];
+    currrentMapName = evt.target.alt;
 }
 
 //プロジェクトのjsonをすべてオブジェクトにロードする
@@ -108,8 +123,8 @@ function showMapData(evt) {
 	//クリックした座標を取得する
 	var mousePos = getMousePosition(currentMapCanvas, evt);
     //クリックしたマップチップを特定
-	var colNum = Math.floor(mousePos.x/mapLength);
-	var rowNum = Math.floor(mousePos.y/mapLength);
+	colNum = Math.floor(mousePos.x/mapLength);
+	rowNum = Math.floor(mousePos.y/mapLength);
 
     //現在マップオブジェクトから、選択したマップの情報を取得
     currentMapTip  = currrentMapObj[rowNum][colNum];
@@ -134,16 +149,9 @@ function showMapData(evt) {
     //トリガーチェック
     if (currentMapTip.hasOwnProperty('trigger')) {
         //登録ずみトリガーを表示
-        var html = '<select id="trigger">';
-        for (i=0; i<triggerLists.length; i++) {
-            if (currentMapTip.trigger == triggerLists[i]) {
-                html += '<option value="' + triggerLists[i] + '" selected>' + triggerLists[i] + '</option>';
-            }
-            html += '<option value="' + triggerLists[i] + '">' + triggerLists[i] + '</option>';
-        }
-        html += '</select>';
-        eventTrigger.innerHTML = html;
+        showMapTipTrigger();
     } else {
+        //トリガーが設定されてない場合、トリガーリストを表示
         var html = '<select id="trigger">';
         for (i=0; i<triggerLists.length; i++) {
             html += '<option value="' + triggerLists[i] + '">' + triggerLists[i] + '</option>';
@@ -155,11 +163,36 @@ function showMapData(evt) {
     //イベントチェック
     if (currentMapTip.hasOwnProperty('events')) {
         //登録ずみイベント一覧を表示
-        
+        showMapTipEvents();
     } else {
         mapEvent.innerHTML = '<p>イベントはありません</p>';
     }
     mapEvent.innerHTML += '<p id="addEvent" onclick="addEvent()">イベントを追加</p>'
+}
+
+//現在マップチップのトリガーを表示
+function showMapTipTrigger() {
+    var html = '<select id="trigger">';
+    for (i=0; i<triggerLists.length; i++) {
+        if (triggerLists[i] == currentMapTip.trigger) {
+            html += '<option value="' + triggerLists[i] + '" selected>' + triggerLists[i] + '</option>';
+        } else {
+            html += '<option value="' + triggerLists[i] + '">' + triggerLists[i] + '</option>';
+        }
+    }
+    html += '</select>';
+    eventTrigger.innerHTML = html;
+}
+
+//現在マップチップのイベントを表示
+function showMapTipEvents() {
+    var html = '<p>設定済みイベント一覧</p>';
+    html += '<ul>';
+    for( key in currentMapTip.events ) {
+        html += '<li onclick="">' + key + '</li>';
+    }
+    html += '</ul>';
+    mapEvent.innerHTML = html;
 }
 
 //クリックされた座標を返す
@@ -193,6 +226,7 @@ function setEvent(eventName) {
     //マップにイベントがセットされているかチェック
     if (currentMapTip.hasOwnProperty('events')) {
         //現在の登録内容を表示、編集
+        showMapTipEvents();
     } else {
         //新規、登録
         switch (eventName) {
@@ -220,21 +254,55 @@ function setEvent(eventName) {
 }
 
 //マップオブジェクトに、イベントを登録する（サーバ保存はまだ）
+//同時にイベント一覧も更新
 function registEventToObj(flg, evtName) {
-    switch (eventName) {
+    var res = confirm('この内容でイベントを追加しますか？');
+    if (!res) {
+        return;
+    }
+
+    //トリガーを登録する(変わってなくても毎回処理実行)
+    if (document.getElementById('trigger').selectedIndex == 0) {
+        alert('トリガーを選択してください！');
+        return;
+    } else {
+        currentMapTip.trigger = document.getElementById('trigger').value;
+    }
+
+    //イベントを登録する
+    switch (evtName) {
         case 'talk':
             if (flg == 'new') {
+                //イベントの配列用オブジェクト
                 currentMapTip.events = new Object();
             }
-            currentMapTip.events.trigger = document.getElementById('talk').value;
+            //現在マップチップのイベント数を数える
+            var evtIndex = Object.keys(currentMapTip.events).length;
+            //イベントのキーを作成
+            var evtNameKey = evtIndex + '_' + evtName;
+            //イベント名のキーごとにオブジェクトを作成
+            currentMapTip.events[evtNameKey] = new Object();
+            //トークのコンテンツを格納
+            currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
         break; 
     }
+    //マップオブジェクトに現在マップオブジェクトの変更を反映
+    currrentMapObj[rowNum][colNum] = currentMapTip;
+    //トリガーを更新
+    showMapTipTrigger();
+    //イベント一覧を更新
+    showMapTipEvents();
 }
 
 //マップを保存する
-function saveProject() {
-    var res = confirm('プロジェクトを保存しますか？');
+function saveMapToServer() {
+    var res = confirm('編集内容をプロジェクトに保存しますか？');
     if (res) {
-        //登録処理、次のプロジェクトのフォルダに置きにいく
+        //選択中マップオブジェクトをjsonにしてフォームにセット
+        var objTxt = JSON.stringify(currrentMapObj);
+        document.forms['map_data'].elements['map_obj_data'].value = objTxt;
+        document.forms['map_data'].elements['map_save_name'].value = currrentMapName;
+        document.forms['map_data'].elements['project_name'].value = projectName.innerText;
+        document.forms['map_data'].submit();
     }
 }

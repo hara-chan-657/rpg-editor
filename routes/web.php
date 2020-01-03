@@ -20,3 +20,5 @@ Route::post('/getProjectData', 'RpgEditorController@getProjectData');
 Route::get('/getProjectData', 'RpgEditorController@getProjectData');
 
 Route::get('/getJson', 'RpgEditorController@getJson');
+
+Route::post('/rpg-editor/saveEditedMap', 'RpgEditorController@saveEditedMap');

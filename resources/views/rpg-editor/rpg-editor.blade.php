@@ -39,7 +39,7 @@
     <ul>
     @foreach($pngFiles as $pngFile)
         <li>
-            <p class="mapNames">{{$pngFile['baseName']}}</p>
+            <p class="mapNames" id={{$pngFile['baseName']}}>{{$pngFile['baseName']}}</p>
             <img src={{$pngFile['path']}} class='maps' width="200" height="150" alt="{{$pngFile['baseName']}}">
         </li>
     @endforeach
@@ -50,8 +50,14 @@
     @endforeach
     </div>
     <div id="saveProjectContainer">
-        <p id="saveProject">このマップを保存</p>
+        <button id="saveMap">編集中マップをプロジェクトに保存</button>
     </div>
+    <form name="map_data" action="rpg-editor/saveEditedMap" method="post">
+        {{ csrf_field() }}
+        <input type="hidden" name="map_obj_data" value="" />
+        <input type="hidden" name="map_save_name" value="" />
+        <input type="hidden" name="project_name" value="" />
+    </form>
 <script src="{{ asset('/js/rpg-editor.js') }}"></script>
 </body>
 
