@@ -11,14 +11,13 @@
 |
 */
 
+//一番最初、プロジェクト選択画面
+//(ミドルウェアでプロジェクトのセレクトボックス取得してるけど、ビューコンポーザにすべきかも)
 Route::get('/', 'RpgEditorController@selectProject')
     ->middleware('selectProject');
 
-Route::post('/', 'RpgEditorController@index');
-
+//プロジェクトの情報を取得しにいく
 Route::post('/getProjectData', 'RpgEditorController@getProjectData');
-Route::get('/getProjectData', 'RpgEditorController@getProjectData');
 
-Route::get('/getJson', 'RpgEditorController@getJson');
-
+//マップ保存のアクションへ
 Route::post('/rpg-editor/saveEditedMap', 'RpgEditorController@saveEditedMap');

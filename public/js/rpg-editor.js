@@ -4,8 +4,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 //================================ 各種変数 ===============================================//
-//戻る用配列
-
 //１マップ大きさ
 var mapLength = 32;
 //プロジェクトのマップオブジェクト用配列
@@ -20,6 +18,12 @@ var colNum;
 var rowNum;
 //現在選択中マップチップ
 var currentMapTip;
+//トリガーリスト
+var triggerLists = [
+    "トリガー設定なし",
+    "Aボタン",
+    "衝突",
+]
 //セット可能イベントリスト
 var settingEvents = [
     "会話",
@@ -30,12 +34,6 @@ var settingEvents = [
     "エンカウントバトル",
     "対人バトル",
     "道具発見",
-]
-//トリガーリスト
-var triggerLists = [
-    "トリガー設定なし",
-    "Aボタン",
-    "衝突",
 ]
 //================================ 各種エレメント ===============================================//
 //現在マップキャンバス
@@ -70,7 +68,7 @@ window.addEventListener('load', setDefault, false);
 for (var i=0; i<maps.length; i++) {
 	maps[i].addEventListener('click', function(evt) {setEditMap(evt);}, false);
 }
-currentMapCanvas.addEventListener('click', function(evt) {showMapData(evt);}, false);
+currentMapCanvas.addEventListener('click', function(evt) {showMapTipData(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -117,9 +115,9 @@ function loadJsonToObj() {
     }
 }
 
-//マップのデータを表示する
+//マップチップのデータを表示する
 //param1 : クリック時イベント情報
-function showMapData(evt) {
+function showMapTipData(evt) {
 	//クリックした座標を取得する
 	var mousePos = getMousePosition(currentMapCanvas, evt);
     //クリックしたマップチップを特定
@@ -149,15 +147,10 @@ function showMapData(evt) {
     //トリガーチェック
     if (currentMapTip.hasOwnProperty('trigger')) {
         //登録ずみトリガーを表示
-        showMapTipTrigger();
+        showMapTipTrigger(currentMapTip.trigger);
     } else {
         //トリガーが設定されてない場合、トリガーリストを表示
-        var html = '<select id="trigger">';
-        for (i=0; i<triggerLists.length; i++) {
-            html += '<option value="' + triggerLists[i] + '">' + triggerLists[i] + '</option>';
-        }
-        html += '</select>';
-        eventTrigger.innerHTML = html;
+        showMapTipTrigger('notrigger');
     }
 
     //イベントチェック
@@ -167,14 +160,15 @@ function showMapData(evt) {
     } else {
         mapEvent.innerHTML = '<p>イベントはありません</p>';
     }
+    //イベント追加ボタン
     mapEvent.innerHTML += '<p id="addEvent" onclick="addEvent()">イベントを追加</p>'
 }
 
 //現在マップチップのトリガーを表示
-function showMapTipTrigger() {
+function showMapTipTrigger(trigger) {
     var html = '<select id="trigger">';
     for (i=0; i<triggerLists.length; i++) {
-        if (triggerLists[i] == currentMapTip.trigger) {
+        if (triggerLists[i] == trigger) {
             html += '<option value="' + triggerLists[i] + '" selected>' + triggerLists[i] + '</option>';
         } else {
             html += '<option value="' + triggerLists[i] + '">' + triggerLists[i] + '</option>';
@@ -209,7 +203,7 @@ function getMousePosition(currentMapCanvas, evt) {
 
 //マップにイベント追加のdivを表示する
 function addEvent() {
-    editEventContainer.style.display = 'block';
+    editEventContainer.style.display = 'inline-block';
     var evtListHtml = '<p>追加するイベントを選択</p>';
     for (i=0; i<settingEvents.length; i++) {
         evtListHtml += '<p class="event" onclick="setEvent(\'' + settingEvents[i] + '\')">' + settingEvents[i] +'</p>';
@@ -221,40 +215,35 @@ function addEvent() {
 //イベントが既存だった場合→編集
 //イベントが新規だった場合→登録
 function setEvent(eventName) {
-    editEvent.style.display = 'block';
+    editEvent.style.display = 'inline-block';
     var html;
-    //マップにイベントがセットされているかチェック
-    if (currentMapTip.hasOwnProperty('events')) {
-        //現在の登録内容を表示、編集
-        showMapTipEvents();
-    } else {
-        //新規、登録
-        switch (eventName) {
-            case '会話':
-                html += '<p>会話</p>';
-                html += '<p>会話の内容を入力</p>';
-                html += '<textarea id="talk"></textarea>';
-                html += '<p id="registEvent" onclick="registEventToObj(\'new\', \'talk\')">この内容でイベント追加</p>';
-                editEvent.innerHTML = html;
-                break;
-            case '質問':
-                break;
-            case '通りぬけ':
-                break;
-            case '遷移':
-                break;
-            case '進入':
-                break;
-            case 'エンカウントバトル':
-                break;
-            case '対人バトル':
-                break;
-        }
+    switch (eventName) {
+        case '会話':
+            html = '<p>会話</p>';
+            html += '<p>会話の内容を入力</p>';
+            html += '<textarea id="talk"></textarea>';
+            html += '<p id="registEvent" onclick="registEventToObj(\'new\', \'talk\')">この内容でイベント追加</p>';
+            editEvent.innerHTML = html;
+            break;
+        case '質問':
+            break;
+        case '通りぬけ':
+            break;
+        case '遷移':
+            break;
+        case '進入':
+            break;
+        case 'エンカウントバトル':
+            break;
+        case '対人バトル':
+            break;
     }
 }
 
 //マップオブジェクトに、イベントを登録する（サーバ保存はまだ）
 //同時にイベント一覧も更新
+//param1 : イベント所持フラグ(new→初イベント)
+//param2 : イベントネーム
 function registEventToObj(flg, evtName) {
     var res = confirm('この内容でイベントを追加しますか？');
     if (!res) {
@@ -294,7 +283,8 @@ function registEventToObj(flg, evtName) {
     showMapTipEvents();
 }
 
-//マップを保存する
+//編集中マップ情報をサーバに保存する、同時にrpg-playerにもプロジェクトのファイルを同期する
+//(続きの処理はRpgEditorController.saveEditedMap)
 function saveMapToServer() {
     var res = confirm('編集内容をプロジェクトに保存しますか？');
     if (res) {

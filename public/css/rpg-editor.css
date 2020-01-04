@@ -1,24 +1,81 @@
+#mapContainer {
+    padding: 10px;
+    overflow: hidden;
+    background-image:url("../image/background.png");
+}
+
+#currentMapContainer {
+    float: left;
+	border: 1px solid red;
+	display: inline-block;
+	overflow: scroll;
+	white-space:nowrap;
+	width: 480px;
+	height: 480px;
+	background-color: white;
+}
+
+#mapDataContainer {
+    float: left;
+	border: 1px solid red;
+	display: inline-block;
+}
+
 .mapSpans {
     width: 100px;
     height: 80px;
+}
+
+#mapTypeName {
+    margin:0px;
 }
 
 #addEvent {
     background-color: orange;
     color: white;
     border-radius: 30px;
-    padding: 5px;
+    padding: 0px;
+    margin:0px;
     width: 130px;
     cursor: pointer;
     text-align: center;
 }
 
 #editEventContainer {
+    border: 1px solid blue;
     display: none;
     background-color: teal;
+}
+
+.event {
+    margin: 2px;
+    background-color: yellow;
+    color: white;
+    cursor: pointer;
+    text-align: center;
 }
 
 #editEvent {
     display: none;
     background-color: green;
+}
+
+#registEvent {
+    background-color: red;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 130px;
+    cursor: pointer;
+    text-align: center;
+}
+
+#projectsContainer {
+    overflow: hidden;
+}
+
+.eachMapContainer {
+float: left;
+margin: 0px 3px;
 }

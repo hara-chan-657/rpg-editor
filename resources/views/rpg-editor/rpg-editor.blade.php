@@ -16,6 +16,7 @@
 
     @endcomponent
 
+    <div id="mapContainer">
     <div id='currentMapContainer'>
         <div id='currentMap'>
             <canvas id="currentMapCanvas"></canvas>
@@ -27,27 +28,24 @@
         <div id="eventTrigger">
         </div>
         <div id="mapEvent">
-        </di>
-    </div>
-    <div id="editEventContainer">
-        <div id="eventLists">
         </div>
-        <div id="editEvent">
+        <div id="editEventContainer">
+            <div id="eventLists">
+            </div>
         </div>
     </div>
-    <p id="projectName">{{$project}}</p>
-    <ul>
-    @foreach($pngFiles as $pngFile)
-        <li>
-            <p class="mapNames" id={{$pngFile['baseName']}}>{{$pngFile['baseName']}}</p>
-            <img src={{$pngFile['path']}} class='maps' width="200" height="150" alt="{{$pngFile['baseName']}}">
-        </li>
-    @endforeach
-    </ul>
-    <div>
-    @foreach($jsonFiles as $jsonFile)
-        <p>{{$jsonFile}}</p>
-    @endforeach
+    <div id="editEvent">
+    </div>
+    </div>    
+
+    <div id="projectsContainer">
+        <p id="projectName">{{$project}}</p>
+        @foreach($pngFiles as $pngFile)
+            <div class="eachMapContainer">
+                <p class="mapNames" id={{$pngFile['baseName']}}>{{$pngFile['baseName']}}</p>
+                <img src={{$pngFile['path']}} class='maps' width="200" height="150" alt="{{$pngFile['baseName']}}">
+            </div>
+        @endforeach
     </div>
     <div id="saveProjectContainer">
         <button id="saveMap">編集中マップをプロジェクトに保存</button>

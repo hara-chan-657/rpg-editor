@@ -9,15 +9,13 @@ use Illuminate\Http\Request;
 
 class RpgEditorController extends Controller
 {
-    public function index(Request $request) {
-        return view('rpg-editor.rpg-editor', $request);
-    }
-
+    //プロジェクト選択画面へ
     public function selectProject(Request $request) {
         //selectProjectMiddlewara.phpからデータ取得
         return view('rpg-editor.select-project', ['data'=>$request->data]);
     }
 
+    //プロジェクトデータを取得しにいく
     public function getProjectData(Request $request) {
         //引数のプロジェクト名を元に、プロジェクトのマップと、マップデータを探しにいく
         //ディレクトリの中のマップ画像パスを取得する
@@ -37,10 +35,7 @@ class RpgEditorController extends Controller
         return view('rpg-editor.rpg-editor', ['pngFiles'=>$pngFiles, 'jsonFiles'=>$jsonFiles, 'project'=>$request->oldProjectName]);
     }
 
-    //編集されたマップ情報を上書き＆rpg-playerに保存しにいく
-    //ディレクトリごとコピーしにいった方が早いかな？
-    //ディレクトリがあるなら編集したマップのjsonだけ、
-    //いやrsyncしても良い気が
+    //編集されたマップ情報をサーバに保存＆rpg-playerに同期しにいく
     public function saveEditedMap(Request $request) {
         $mapJsonObj = $request->map_obj_data;
         $savePath = './projects/' . $request->project_name . '/' . $request->map_save_name .'.json';
