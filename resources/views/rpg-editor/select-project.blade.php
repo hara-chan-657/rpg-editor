@@ -14,5 +14,5 @@
     <p>プロジェクトを選択してください</p>
     <p>{!! $data['projects'] !!}</P>
     <input type="submit">
-</form>
+    </form>
 @endsection

@@ -27,12 +27,17 @@ class RpgEditorController extends Controller
                 $i++;
             }
         }
-        foreach(glob('./projects/' . $request->oldProjectName . '/*.json') AS $jsonFile){
-            if(is_file($jsonFile)){
-                $jsonFiles[] = basename($jsonFile);
-            }
-        }
-        return view('rpg-editor.rpg-editor', ['pngFiles'=>$pngFiles, 'jsonFiles'=>$jsonFiles, 'project'=>$request->oldProjectName]);
+        // foreach(glob('./projects/' . $request->oldProjectName . '/*.json') AS $jsonFile){
+        //     if(is_file($jsonFile)){
+        //         if(basename($jsonFile) == "projectData.json") {
+        //             $projectData = basename($jsonFile);
+        //         } else {
+        //             $jsonFiles[] = basename($jsonFile);
+        //         }
+        //     }
+        // }
+        //return view('rpg-editor.rpg-editor', ['pngFiles'=>$pngFiles, 'jsonFiles'=>$jsonFiles, 'project'=>$request->oldProjectName, 'projectData'->$projectData]);
+        return view('rpg-editor.rpg-editor', ['pngFiles'=>$pngFiles, 'project'=>$request->oldProjectName]);
     }
 
     //編集されたマップ情報をサーバに保存＆rpg-playerに同期しにいく

@@ -8,6 +8,8 @@
 var mapLength = 32;
 //プロジェクトのマップオブジェクト用配列
 var mapObj = [];
+//プロジェクトのデータオブジェクト
+var projectDataObj;
 //現在選択中マップオブジェクト;
 var currrentMapObj = null;
 //現在選択中マップ名
@@ -36,6 +38,8 @@ var settingEvents = [
     "道具発見",
 ]
 //================================ 各種エレメント ===============================================//
+//スタートプロジェクト設定コンテナ
+var setStartProjectContainer = document.getElementById('setStartProjectContainer');
 //現在マップキャンバス
 var currentMapCanvas = document.getElementById('currentMapCanvas');
 var currentMapContext = currentMapCanvas.getContext('2d');
@@ -68,6 +72,7 @@ window.addEventListener('load', setDefault, false);
 for (var i=0; i<maps.length; i++) {
 	maps[i].addEventListener('click', function(evt) {setEditMap(evt);}, false);
 }
+setStartProject.addEventListener('click', setStartProjectThisMap, false);
 currentMapCanvas.addEventListener('click', function(evt) {showMapTipData(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 
@@ -100,10 +105,13 @@ function setEditMap(evt) {
     //現在選択中マップを更新
     currrentMapObj = mapObj[evt.target.alt];
     currrentMapName = evt.target.alt;
+    //スタートプロジェクトかチェック
+    checkIsStartProject();
 }
 
 //プロジェクトのjsonをすべてオブジェクトにロードする
 function loadJsonToObj() {
+    //マップのオブジェクトをロードする
     for (var i=0; i<mapNames.length; i++) {
         //なんでホスト名は要らないのか不明!謎！
         var url = 'projects/' + projectName.innerText + '/' + mapNames[i].innerText + '.json';
@@ -113,6 +121,30 @@ function loadJsonToObj() {
         xhr.send(null);
         mapObj[mapNames[i].innerText] = JSON.parse(xhr.responseText);
     }
+    //プロジェクトデータをロードする
+    var url = 'projects/' + projectName.innerText + '/projectData.json';
+    var xhr = new XMLHttpRequest();
+    //同期処理なので、ここで毎回取得
+    xhr.open('GET', url, false);
+    xhr.send(null);
+    projectDataObj = JSON.parse(xhr.responseText);
+}
+
+//スタートプロジェクトかチェックする
+function checkIsStartProject() {
+    var isStart = false;
+    if (currrentMapObj['startMap'] == ) {
+        isStart = true;
+    }
+    if (isStart) {
+        setStartProjectContainer.innerHTML = '<p id="setStartProject">スタートプロジェクトを解除する</p>';
+    } else {
+        setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="setStartProjectThisMap()">スタートプロジェクトに設定する</p>';
+    }
+}
+
+function setStartProjectThisMap() {
+    currrentMapObj
 }
 
 //マップチップのデータを表示する

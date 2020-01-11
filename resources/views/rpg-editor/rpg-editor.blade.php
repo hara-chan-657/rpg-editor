@@ -17,26 +17,31 @@
     @endcomponent
 
     <div id="mapContainer">
-    <div id='currentMapContainer'>
-        <div id='currentMap'>
-            <canvas id="currentMapCanvas"></canvas>
-            <img src="" id="currentMapImage" style="display:none">
+        <div id="setStartProjectContainer">
         </div>
-    </div>
-    <div id="mapDataContainer">
-        <p id="mapTypeName"></p>
-        <div id="eventTrigger">
-        </div>
-        <div id="mapEvent">
-        </div>
-        <div id="editEventContainer">
-            <div id="eventLists">
+        <div id='currentMapContainer'>
+            <div id='currentMap'>
+                <canvas id="currentMapCanvas"></canvas>
+                <img src="" id="currentMapImage" style="display:none">
             </div>
         </div>
-    </div>
-    <div id="editEvent">
-    </div>
+        <div id="mapDataContainer">
+            <p id="mapTypeName"></p>
+            <div id="eventTrigger">
+            </div>
+            <div id="mapEvent">
+            </div>
+            <div id="editEventContainer">
+                <div id="eventLists">
+                </div>
+            </div>
+        </div>
+        <div id="editEvent">
+        </div>
     </div>    
+    <div id="saveProjectContainer">
+        <button id="saveMap">編集中マップをプロジェクトに保存</button>
+    </div>
 
     <div id="projectsContainer">
         <p id="projectName">{{$project}}</p>
@@ -46,9 +51,6 @@
                 <img src={{$pngFile['path']}} class='maps' width="200" height="150" alt="{{$pngFile['baseName']}}">
             </div>
         @endforeach
-    </div>
-    <div id="saveProjectContainer">
-        <button id="saveMap">編集中マップをプロジェクトに保存</button>
     </div>
     <form name="map_data" action="rpg-editor/saveEditedMap" method="post">
         {{ csrf_field() }}

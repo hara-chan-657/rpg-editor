@@ -4,6 +4,17 @@
     background-image:url("../image/background.png");
 }
 
+#setStartProject {
+    background-color: orange;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 300px;
+    cursor: pointer;
+    text-align: center;
+}
+
 #currentMapContainer {
     float: left;
 	border: 1px solid red;
@@ -44,7 +55,6 @@
 #editEventContainer {
     border: 1px solid blue;
     display: none;
-    background-color: teal;
 }
 
 .event {
@@ -56,8 +66,8 @@
 }
 
 #editEvent {
+    border: 1px solid green;
     display: none;
-    background-color: green;
 }
 
 #registEvent {
