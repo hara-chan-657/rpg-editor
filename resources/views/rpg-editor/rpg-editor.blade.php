@@ -57,6 +57,7 @@
         <input type="hidden" name="map_obj_data" value="" />
         <input type="hidden" name="map_save_name" value="" />
         <input type="hidden" name="project_name" value="" />
+        <input type="hidden" name="project_data" value="" />
     </form>
 <script src="{{ asset('/js/rpg-editor.js') }}"></script>
 </body>

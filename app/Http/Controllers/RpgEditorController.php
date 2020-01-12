@@ -42,11 +42,20 @@ class RpgEditorController extends Controller
 
     //編集されたマップ情報をサーバに保存＆rpg-playerに同期しにいく
     public function saveEditedMap(Request $request) {
+        //マップのオブジェクトデータを上書きしにいく
         $mapJsonObj = $request->map_obj_data;
         $savePath = './projects/' . $request->project_name . '/' . $request->map_save_name .'.json';
         //マップオブジェクトデータを保存
         $fp = fopen($savePath, "w");
         fwrite($fp, $mapJsonObj);
+        fclose($fp);
+
+        //プロジェクトデータのオブジェクトデータを上書きしにいく
+        $prjJsonObj = $request->project_data;
+        $savePath = './projects/' . $request->project_name . '/projectData.json';
+        //マップオブジェクトデータを保存
+        $fp = fopen($savePath, "w");
+        fwrite($fp, $prjJsonObj);
         fclose($fp);
 
         //プロジェクトディレクトリをrpg-playerに同期

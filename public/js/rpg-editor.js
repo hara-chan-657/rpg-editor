@@ -72,7 +72,7 @@ window.addEventListener('load', setDefault, false);
 for (var i=0; i<maps.length; i++) {
 	maps[i].addEventListener('click', function(evt) {setEditMap(evt);}, false);
 }
-setStartProject.addEventListener('click', setStartProjectThisMap, false);
+//setStartProject.addEventListener('click', setStartProjectThisMap, false);
 currentMapCanvas.addEventListener('click', function(evt) {showMapTipData(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 
@@ -130,21 +130,35 @@ function loadJsonToObj() {
     projectDataObj = JSON.parse(xhr.responseText);
 }
 
-//スタートプロジェクトかチェックする
+//マップ選択時スタートプロジェクトかチェックする
 function checkIsStartProject() {
     var isStart = false;
-    if (currrentMapObj['startMap'] == ) {
+    if (projectDataObj['startMap'] == currrentMapName) {
         isStart = true;
     }
     if (isStart) {
-        setStartProjectContainer.innerHTML = '<p id="setStartProject">スタートプロジェクトを解除する</p>';
+        setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'remove\')>スタートプロジェクトを解除する</p>';
     } else {
-        setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="setStartProjectThisMap()">スタートプロジェクトに設定する</p>';
+        setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'set\')">スタートプロジェクトに設定する</p>';
     }
 }
 
-function setStartProjectThisMap() {
-    currrentMapObj
+//スタートプロジェクトの状態を変更する
+function changeStartProjectThisMap(mode) {
+    if (mode == 'remove') {
+        var res = confirm('スタートプロジェクトから解除してもよろしいですか？');
+        if (res) {
+            projectDataObj['startMap'] = 'null';
+            setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'set\')">スタートプロジェクトに設定する</p>';
+        }
+    } else if (mode == 'set') {
+        var res = confirm('このマップをスタートプロジェクトに設定しますか？');
+        if (res) {
+            projectDataObj['startMap'] = currrentMapName;
+            setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'remove\')">スタートプロジェクトを解除する</p>';
+        }
+    }
+
 }
 
 //マップチップのデータを表示する
@@ -321,10 +335,13 @@ function saveMapToServer() {
     var res = confirm('編集内容をプロジェクトに保存しますか？');
     if (res) {
         //選択中マップオブジェクトをjsonにしてフォームにセット
-        var objTxt = JSON.stringify(currrentMapObj);
-        document.forms['map_data'].elements['map_obj_data'].value = objTxt;
+        var mapObjTxt = JSON.stringify(currrentMapObj);
+        var prjObjTxt = JSON.stringify(projectDataObj);
+        
+        document.forms['map_data'].elements['map_obj_data'].value = mapObjTxt;
         document.forms['map_data'].elements['map_save_name'].value = currrentMapName;
         document.forms['map_data'].elements['project_name'].value = projectName.innerText;
+        document.forms['map_data'].elements['project_data'].value = prjObjTxt;
         document.forms['map_data'].submit();
     }
 }
