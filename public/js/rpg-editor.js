@@ -20,6 +20,12 @@ var colNum;
 var rowNum;
 //現在選択中マップチップ
 var currentMapTip;
+//スタートポジション選択フラグ
+var editStartPosFlg = false;
+//スタートポジションX
+var startPosX;
+//スタートポジションY
+var startPosY;
 //トリガーリスト
 var triggerLists = [
     "トリガー設定なし",
@@ -40,6 +46,14 @@ var settingEvents = [
 //================================ 各種エレメント ===============================================//
 //スタートプロジェクト設定コンテナ
 var setStartProjectContainer = document.getElementById('setStartProjectContainer');
+//スタートポジション編集コンテナ
+var editStartPositionContainer = document.getElementById('editStartPositionContainer');
+//スタートポジション表示
+var startPos = document.getElementById('startPos');
+//スタートポジション設定
+var saveStartPos = document.getElementById('saveStartPos');
+//スタートポジション設定ストップ
+var stopEditStartPos = document.getElementById('stopEditStartPos');
 //現在マップキャンバス
 var currentMapCanvas = document.getElementById('currentMapCanvas');
 var currentMapContext = currentMapCanvas.getContext('2d');
@@ -73,6 +87,8 @@ for (var i=0; i<maps.length; i++) {
 	maps[i].addEventListener('click', function(evt) {setEditMap(evt);}, false);
 }
 //setStartProject.addEventListener('click', setStartProjectThisMap, false);
+saveStartPos.addEventListener('click', saveStartPosition, false);
+stopEditStartPos.addEventListener('click', stopEditStartPosition, false);
 currentMapCanvas.addEventListener('click', function(evt) {showMapTipData(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 
@@ -136,10 +152,23 @@ function checkIsStartProject() {
     if (projectDataObj['startMap'] == currrentMapName) {
         isStart = true;
     }
+    //スタートプロジェクトのマップだった場合
     if (isStart) {
-        setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'remove\')>スタートプロジェクトを解除する</p>';
+        //現在設定済みスタートポジション取得
+        var currentStartPos = '(' + projectDataObj['startPosX'] + ':' + projectDataObj['startPosY'] + ')';
+        var html = '<p>スタートポジション：' + currentStartPos + '</p>';
+        html += '<p id="setStartProject" onclick="changeStartProjectThisMap(\'remove\')">スタートプロジェクトを解除する</p>';
+        setStartProjectContainer.innerHTML = html;
+    //スタートプロジェクトのマップじゃなかった場合
     } else {
-        setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'set\')">スタートプロジェクトに設定する</p>';
+        var html;
+        if (projectDataObj['startMap'] == 'null') {
+            html = '<p>現在スタートプロジェクトは設定されていません</p>';
+        } else {
+            html = '<p>現在のスタートプロジェクトは「' + projectDataObj['startMap'] + '」です。</p>';
+        }
+        html += '<p id="setStartProject" onclick="changeStartProjectThisMap(\'set\')">このマップをスタートプロジェクトに設定する</p>';
+        setStartProjectContainer.innerHTML = html;
     }
 }
 
@@ -149,16 +178,58 @@ function changeStartProjectThisMap(mode) {
         var res = confirm('スタートプロジェクトから解除してもよろしいですか？');
         if (res) {
             projectDataObj['startMap'] = 'null';
-            setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'set\')">スタートプロジェクトに設定する</p>';
+            projectDataObj['startPosX'] = 'null';
+            projectDataObj['startPosY'] = 'null';
+            //結果更新
+            checkIsStartProject();
         }
     } else if (mode == 'set') {
         var res = confirm('このマップをスタートプロジェクトに設定しますか？');
         if (res) {
-            projectDataObj['startMap'] = currrentMapName;
-            setStartProjectContainer.innerHTML = '<p id="setStartProject" onclick="changeStartProjectThisMap(\'remove\')">スタートプロジェクトを解除する</p>';
+            //スタートポジション選択フラグをtrueに
+            editStartPosFlg = true;
+            //スタートポジション編集コンテナ表示
+            editStartPositionContainer.style.display = 'block';
         }
+    } else {
+
+    }
+}
+
+//スタートポジションをオブジェクトに設定する
+function saveStartPosition() {
+    //バリデーション
+    var selectedMapTip  = currrentMapObj[startPosY][startPosX];
+    //今のところスタートとして許可するのは「地形」のみ
+    if (selectedMapTip.maptipType != 3) {
+        alert('スタートポジションに設定できるのは、「地形通りぬけ」のマップチップのみです!');
+        return;
     }
 
+    //編集フラグをOFFに
+    editStartPosFlg = false;
+
+    //プロジェクトデータに保存
+    projectDataObj['startMap'] = currrentMapName;
+    projectDataObj['startPosX'] = startPosX;
+    projectDataObj['startPosY'] = startPosY;
+    //結果更新
+    editStartPositionContainer.style.display = 'none';
+    checkIsStartProject();
+}
+
+//スタートポジション編集を取りやめる
+function stopEditStartPosition() {
+    //やめるか聞く
+    var res = confirm('スタートポジション編集をやめますか？');
+    if (res) {
+        //編集フラグをOFFに
+        editStartPosFlg = false;
+        //結果更新
+        startPos.innerText = '';
+        editStartPositionContainer.style.display = 'none';
+        checkIsStartProject();
+    }
 }
 
 //マップチップのデータを表示する
@@ -168,7 +239,15 @@ function showMapTipData(evt) {
 	var mousePos = getMousePosition(currentMapCanvas, evt);
     //クリックしたマップチップを特定
 	colNum = Math.floor(mousePos.x/mapLength);
-	rowNum = Math.floor(mousePos.y/mapLength);
+    rowNum = Math.floor(mousePos.y/mapLength);
+    
+    //スタートポジション選択フラグがtrueの場合
+    if (editStartPosFlg) {
+        startPos.innerText = '(' + colNum + ':' + rowNum + ')';
+        startPosX = colNum;
+        startPosY = rowNum;
+        return;
+    }
 
     //現在マップオブジェクトから、選択したマップの情報を取得
     currentMapTip  = currrentMapObj[rowNum][colNum];

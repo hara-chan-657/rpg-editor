@@ -19,6 +19,12 @@
     <div id="mapContainer">
         <div id="setStartProjectContainer">
         </div>
+        <div id="editStartPositionContainer" style="display:none">
+            <p>スタートポジションを設定してください。</p>
+            <p>スタートポジション：<span id="startPos"></span></p>
+            <P id="saveStartPos">保存</p>
+            <p id="stopEditStartPos">やめる</p>
+        </div>
         <div id='currentMapContainer'>
             <div id='currentMap'>
                 <canvas id="currentMapCanvas"></canvas>
