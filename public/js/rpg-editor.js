@@ -347,7 +347,7 @@ function setEvent(eventName) {
             html = '<p>会話</p>';
             html += '<p>会話の内容を入力</p>';
             html += '<textarea id="talk"></textarea>';
-            html += '<p id="registEvent" onclick="registEventToObj(\'new\', \'talk\')">この内容でイベント追加</p>';
+            html += '<p id="registEvent" onclick="registEventToObj(\'talk\')">この内容でイベント追加</p>';
             editEvent.innerHTML = html;
             break;
         case '質問':
@@ -369,7 +369,7 @@ function setEvent(eventName) {
 //同時にイベント一覧も更新
 //param1 : イベント所持フラグ(new→初イベント)
 //param2 : イベントネーム
-function registEventToObj(flg, evtName) {
+function registEventToObj(evtName) {
     var res = confirm('この内容でイベントを追加しますか？');
     if (!res) {
         return;
@@ -383,15 +383,22 @@ function registEventToObj(flg, evtName) {
         currentMapTip.trigger = document.getElementById('trigger').value;
     }
 
+    var hasEventflg = false;
+    //イベントチェック
+    if (currentMapTip.hasOwnProperty('events')) {
+        hasEventflg = true;
+    }
+
     //イベントを登録する
     switch (evtName) {
         case 'talk':
-            if (flg == 'new') {
+            if (!hasEventflg) {
                 //イベントの配列用オブジェクト
                 currentMapTip.events = new Object();
             }
             //現在マップチップのイベント数を数える
-            var evtIndex = Object.keys(currentMapTip.events).length;
+            var evtObj  = currentMapTip.events;
+            var evtIndex = Object.keys(evtObj).length;
             //イベントのキーを作成
             var evtNameKey = evtIndex + '_' + evtName;
             //イベント名のキーごとにオブジェクトを作成
