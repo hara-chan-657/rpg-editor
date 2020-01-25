@@ -405,7 +405,7 @@ function registEventToObj(evtName) {
             currentMapTip.events[evtNameKey] = new Object();
             //トークのコンテンツを格納
             currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
-        break; 
+        break;
     }
     //マップオブジェクトに現在マップオブジェクトの変更を反映
     currrentMapObj[rowNum][colNum] = currentMapTip;
