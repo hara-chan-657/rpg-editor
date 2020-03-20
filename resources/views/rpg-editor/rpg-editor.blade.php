@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>rpg-editor</title>
+<title>rpgEditor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="apple-touch-icon" href=".png">
 <link rel="stylesheet" href="{{ asset('/css/rpg-editor.css') }}">
