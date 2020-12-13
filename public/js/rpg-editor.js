@@ -387,12 +387,7 @@ function registEventToObj(evtName) {
     }
 
     //トリガーを登録する(変わってなくても毎回処理実行)
-    if (document.getElementById('trigger').selectedIndex == 0) {
-        alert('トリガーを選択してください！');
-        return;
-    } else {
-        currentMapTip.trigger = document.getElementById('trigger').value;
-    }
+    currentMapTip.trigger = document.getElementById('trigger').value;
 
     var hasEventflg = false;
     //イベントチェック
