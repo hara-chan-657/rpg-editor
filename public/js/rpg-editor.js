@@ -357,6 +357,11 @@ function setEvent(eventName) {
             editEvent.innerHTML = html;
             break;
         case '質問':
+            html = '<p>質問</p>';
+            html += '<p>質問の内容を入力</p>';
+            html += '<textarea id="question"></textarea>';
+            html += '<p id="registEvent" onclick="registEventToObj(\'question\')">この内容でイベント追加</p>';
+            editEvent.innerHTML = html;
             break;
         case '通りぬけ':
             break;
@@ -411,6 +416,22 @@ function registEventToObj(evtName) {
             currentMapTip.events[evtNameKey] = new Object();
             //トークのコンテンツを格納
             currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
+        break;
+
+        case 'question':
+            if (!hasEventflg) {
+                //イベントの配列用オブジェクト
+                currentMapTip.events = new Object();
+            }
+            //現在マップチップのイベント数を数える
+            var evtObj  = currentMapTip.events;
+            var evtIndex = Object.keys(evtObj).length;
+            //イベントのキーを作成
+            var evtNameKey = evtIndex + '_' + evtName;
+            //イベント名のキーごとにオブジェクトを作成
+            currentMapTip.events[evtNameKey] = new Object();
+            //トークのコンテンツを格納
+            currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
         break;
     }
     //マップオブジェクトに現在マップオブジェクトの変更を反映

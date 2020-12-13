@@ -17,7 +17,8 @@ Route::get('/', 'RpgEditorController@selectProject')
     ->middleware('selectProject');
 
 //プロジェクトの情報を取得しにいく
-Route::post('/getProjectData', 'RpgEditorController@getProjectData');
+//Route::post('/getProjectData', 'RpgEditorController@getProjectData');
+Route::post('getProjectData', 'RpgEditorController@getProjectData');
 
 //マップ保存のアクションへ
 Route::post('/rpg-editor/saveEditedMap', 'RpgEditorController@saveEditedMap');
