@@ -299,7 +299,7 @@ function showMapTipData(evt) {
 
 //現在マップチップのトリガーを表示
 function showMapTipTrigger(trigger) {
-    var html = '<select id="trigger">';
+    var html = '<select id="trigger" onChange="saveTriggerToObj()">';
     for (i=0; i<triggerLists.length; i++) {
         if (triggerLists[i] == trigger) {
             html += '<option value="' + triggerLists[i] + '" selected>' + triggerLists[i] + '</option>';
@@ -309,6 +309,11 @@ function showMapTipTrigger(trigger) {
     }
     html += '</select>';
     eventTrigger.innerHTML = html;
+}
+
+//トリガーの変更をオブジェクトに保存する
+function saveTriggerToObj() {
+    currentMapTip.trigger = document.getElementById('trigger').value;
 }
 
 //現在マップチップのイベントを表示
@@ -436,9 +441,6 @@ function registEventToObj(evtName) {
     if (!res) {
         return;
     }
-
-    //トリガーを登録する(変わってなくても毎回処理実行)
-    currentMapTip.trigger = document.getElementById('trigger').value;
 
     var hasEventflg = false;
     //イベントチェック
