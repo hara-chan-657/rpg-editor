@@ -41,6 +41,10 @@
     margin:0px;
 }
 
+.registerdEvents {
+    cursor: pointer;
+}
+
 #addEvent {
     background-color: orange;
     color: white;

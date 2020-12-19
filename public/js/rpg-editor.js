@@ -34,15 +34,17 @@ var triggerLists = [
 ]
 //セット可能イベントリスト
 var settingEvents = [
-    "会話",
-    "質問",
-    "通りぬけ",
-    "遷移",
-    "進入",
-    "エンカウントバトル",
-    "対人バトル",
-    "道具発見",
+    "talk",
+    "question",
+    "pass",
+    "transition",
+    "enter",
+    "encounter",
+    "tool",
 ]
+//現在選択中登録済みイベント
+var currentRegisteredEvent = '';
+
 //================================ 各種エレメント ===============================================//
 //スタートプロジェクト設定コンテナ
 var setStartProjectContainer = document.getElementById('setStartProjectContainer');
@@ -313,11 +315,34 @@ function showMapTipTrigger(trigger) {
 function showMapTipEvents() {
     var html = '<p>設定済みイベント一覧</p>';
     html += '<ul>';
+    var evtIndex = 0;
     for( key in currentMapTip.events ) {
-        html += '<li onclick="">' + key + '</li>';
+        html += '<li class="registerdEvents" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\')">' + key + '</li>';
+        evtIndex++;
     }
     html += '</ul>';
     mapEvent.innerHTML = html;
+}
+
+//登録済みイベントクリック時、イベントを選択状態にする。
+function selectRegisterdEvent(e, evtIndex) {
+    //クリックしたイベントを選択状態にする
+    var events = document.getElementsByClassName('registerdEvents');
+    events = Array.from(events);
+    events.forEach(function(event) {
+        // いったん全部のイベントの背景色をクリアする
+        event.style.backgroundColor = '';
+    });
+    //クリックしたイベントの背景のみ背景色を変える
+    e.target.style.backgroundColor = 'yellow';
+    //選択した登録済みのイベントの詳細を表示する
+    currentRegisteredEvent = e.target.innerHTML;
+    //イベント追加ウィンドウを閉じる
+    editEventContainer.style.display = 'none';
+    editEvent.style.display = 'none';
+    //登録時の入力内容をそのまま表示する
+    setEvent(currentRegisteredEvent);
+
 }
 
 //クリックされた座標を返す
@@ -334,7 +359,17 @@ function getMousePosition(currentMapCanvas, evt) {
 
 //マップにイベント追加のdivを表示する
 function addEvent() {
+    currentRegisteredEvent = '';
     editEventContainer.style.display = 'inline-block';
+    //イベント編集divは閉じる
+    editEvent.style.display = 'none';
+    //登録済みイベント選択中を示す背景色をクリア
+    var events = document.getElementsByClassName('registerdEvents');
+    events = Array.from(events);
+    events.forEach(function(event) {
+        // いったん全部のイベントの背景色をクリアする
+        event.style.backgroundColor = '';
+    });
     var evtListHtml = '<p>追加するイベントを選択</p>';
     for (i=0; i<settingEvents.length; i++) {
         evtListHtml += '<p class="event" onclick="setEvent(\'' + settingEvents[i] + '\')">' + settingEvents[i] +'</p>';
@@ -346,32 +381,48 @@ function addEvent() {
 //イベントが既存だった場合→編集
 //イベントが新規だった場合→登録
 function setEvent(eventName) {
+    var orgEvtName = eventName; //既存イベントの際に使用
+    var registeredFlg = false;
+    var firstLetter = eventName.substr(0, 1);
+    //イベント名が数字始まりだった場合（既存のイベント）の処理。変なイベント登録仕様にした過去の自分に後悔。
+    if (isNaN(firstLetter) == false) {
+        var eventName = eventName.substr(2);
+        registeredFlg = true; //登録済みのイベントと判定
+    }
     editEvent.style.display = 'inline-block';
     var html;
     switch (eventName) {
-        case '会話':
+        case 'talk':
+            var talkContent = '';
+            if (registeredFlg) {
+                talkContent = currentMapTip.events[orgEvtName].talkContent;
+            }
             html = '<p>会話</p>';
             html += '<p>会話の内容を入力</p>';
-            html += '<textarea id="talk"></textarea>';
-            html += '<p id="registEvent" onclick="registEventToObj(\'talk\')">この内容でイベント追加</p>';
+            html += '<textarea id="talk">' + talkContent + '</textarea>';
+            html += '<p id="registEvent" onclick="registEventToObj(\'talk\')">この内容でイベント登録</p>';
             editEvent.innerHTML = html;
             break;
-        case '質問':
+        case 'question':
+            var questionContent = '';
+            if (registeredFlg) {
+                questionContent = currentMapTip.events[orgEvtName].questionContent;
+            }
             html = '<p>質問</p>';
             html += '<p>質問の内容を入力</p>';
-            html += '<textarea id="question"></textarea>';
-            html += '<p id="registEvent" onclick="registEventToObj(\'question\')">この内容でイベント追加</p>';
+            html += '<textarea id="question">' + questionContent + '</textarea>';
+            html += '<p id="registEvent" onclick="registEventToObj(\'question\')">この内容でイベント登録</p>';
             editEvent.innerHTML = html;
             break;
-        case '通りぬけ':
+        case 'pass':
             break;
-        case '遷移':
+        case 'transition':
             break;
-        case '進入':
+        case 'enter':
             break;
-        case 'エンカウントバトル':
+        case 'encounter':
             break;
-        case '対人バトル':
+        case 'tool':
             break;
     }
 }
@@ -381,7 +432,7 @@ function setEvent(eventName) {
 //param1 : イベント所持フラグ(new→初イベント)
 //param2 : イベントネーム
 function registEventToObj(evtName) {
-    var res = confirm('この内容でイベントを追加しますか？');
+    var res = confirm('この内容でイベントを登録しますか？');
     if (!res) {
         return;
     }
@@ -398,35 +449,48 @@ function registEventToObj(evtName) {
     //イベントを登録する
     switch (evtName) {
         case 'talk':
-            if (!hasEventflg) {
-                //イベントの配列用オブジェクト
-                currentMapTip.events = new Object();
+            if (currentRegisteredEvent == '') {
+                //新規イベントの場合
+                if (!hasEventflg) {
+                    //イベントの配列用オブジェクト
+                    currentMapTip.events = new Object();
+                }
+                //現在マップチップのイベント数を数える
+                var evtObj  = currentMapTip.events;
+                var evtIndex = Object.keys(evtObj).length;
+                //イベントのキーを作成
+                var evtNameKey = evtIndex + '_' + evtName;
+                //イベント名のキーごとにオブジェクトを作成
+                currentMapTip.events[evtNameKey] = new Object();
+                //トークのコンテンツを格納
+                currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
+            } else {
+                //既存のイベントの場合
+                currentMapTip.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
             }
-            //現在マップチップのイベント数を数える
-            var evtObj  = currentMapTip.events;
-            var evtIndex = Object.keys(evtObj).length;
-            //イベントのキーを作成
-            var evtNameKey = evtIndex + '_' + evtName;
-            //イベント名のキーごとにオブジェクトを作成
-            currentMapTip.events[evtNameKey] = new Object();
-            //トークのコンテンツを格納
-            currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
         break;
 
         case 'question':
-            if (!hasEventflg) {
-                //イベントの配列用オブジェクト
-                currentMapTip.events = new Object();
+            if (currentRegisteredEvent == '') {
+                //新規イベントの場合
+                if (!hasEventflg) {
+                    //イベントの配列用オブジェクト
+                    currentMapTip.events = new Object();
+                }
+                //現在マップチップのイベント数を数える
+                var evtObj  = currentMapTip.events;
+                var evtIndex = Object.keys(evtObj).length;
+                //イベントのキーを作成
+                var evtNameKey = evtIndex + '_' + evtName;
+                //イベント名のキーごとにオブジェクトを作成
+                currentMapTip.events[evtNameKey] = new Object();
+                //トークのコンテンツを格納
+                currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+            } else {
+                //既存のイベントの場合
+                currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('talk').value;
             }
-            //現在マップチップのイベント数を数える
-            var evtObj  = currentMapTip.events;
-            var evtIndex = Object.keys(evtObj).length;
-            //イベントのキーを作成
-            var evtNameKey = evtIndex + '_' + evtName;
-            //イベント名のキーごとにオブジェクトを作成
-            currentMapTip.events[evtNameKey] = new Object();
-            //トークのコンテンツを格納
-            currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+            
         break;
     }
     //マップオブジェクトに現在マップオブジェクトの変更を反映
