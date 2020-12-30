@@ -33,6 +33,7 @@
         </div>
         <div id="mapDataContainer">
             <p id="mapTypeName"></p>
+            <p id="mapPassProperty"></p>
             <div id="eventTrigger">
             </div>
             <div id="mapEvent">

@@ -36,7 +36,6 @@ var triggerLists = [
 var settingEvents = [
     "talk",
     "question",
-    "pass",
     "transition",
     "enter",
     "encounter",
@@ -65,6 +64,8 @@ var projectName = document.getElementById('projectName');
 var maps = document.getElementsByClassName('maps');
 //マップ名
 var mapNames = document.getElementsByClassName('mapNames');
+//マップ通り抜け設定値
+var mapPassProperty = document.getElementById('mapPassProperty');
 //マップタイプ名
 var mapTypeName = document.getElementById('mapTypeName');
 //イベントトリガー
@@ -367,6 +368,16 @@ function changeEventOrder(evt, order) {
 }
 
 function updateMapEventHTML() {
+    //通り抜けチェック
+    if ( currentMapTip.maptipType != 3) {
+        //地形通り抜け以外のマップチップの場合
+        if (currentMapTip.hasOwnProperty('pass')) {
+            mapPassProperty.innerHTML = '<p>通り抜け設定：有り<button onclick="setPassProperty(\'del\')">削除する</button></p>';
+        } else {
+            mapPassProperty.innerHTML = '<p>通り抜け設定：無し<button onclick="setPassProperty(\'add\')">追加する</button></p>';
+        }
+    }
+
     //トリガーチェック
     if (currentMapTip.hasOwnProperty('trigger')) {
         //登録ずみトリガーを表示
@@ -545,8 +556,6 @@ function setEvent(eventName) {
             html += '<p id="registEvent" onclick="registEventToObj(\'question\')">この内容でイベント登録</p>';
             editEvent.innerHTML = html;
             break;
-        case 'pass':
-            break;
         case 'transition':
             break;
         case 'enter':
@@ -556,6 +565,17 @@ function setEvent(eventName) {
         case 'tool':
             break;
     }
+}
+
+//選択中のマップチップに通り抜け属性を付与する
+function setPassProperty(mode) {
+    if (mode == 'del') {
+        delete currentMapTip['pass'];
+    } else {
+        //通り抜け属性を追加（バリューは何でも良い）
+        currentMapTip['pass'] = '通れるよ';
+    }
+    updateMapEventHTML();
 }
 
 //マップオブジェクトに、イベントを登録する（サーバ保存はまだ）
