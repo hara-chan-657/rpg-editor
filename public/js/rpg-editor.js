@@ -243,6 +243,10 @@ function stopEditStartPosition() {
 //マップチップのデータを表示する
 //param1 : クリック時イベント情報
 function showMapTipData(evt) {
+
+    //現在選択中のイベントをクリア
+    currentRegisteredEvent = '';
+
 	//クリックした座標を取得する
 	var mousePos = getMousePosition(currentMapCanvas, evt);
     //クリックしたマップチップを特定
@@ -277,6 +281,92 @@ function showMapTipData(evt) {
             break;
     }
 
+    //イベントのHTMLを更新
+    updateMapEventHTML();
+
+}
+
+function changeEventOrder(evt, order) {
+    if (currentRegisteredEvent == '') {
+        alert('移動対象のイベントが選択されていません!');
+        return;
+    }
+    // 選択中のイベントのインデックス
+    var targetIndex;
+    //登録ずみイベントのキーを取得
+    var evtKeys = Object.keys(currentMapTip.events)
+    //選択中のイベントと一致するイベントのインデックスを取得
+    for (var i=0; i<evtKeys.length; i++) {
+        if (evtKeys[i] == currentRegisteredEvent) {
+            targetIndex = i;
+            //０番目と最後の場合のバリデーション
+            if((targetIndex == 0 && order == 'minus') || (targetIndex == evtKeys.length-1 && order == 'plus')) {
+                return;
+            }
+            break;
+        }
+    }
+    //入れ替えように一時的にイベントを入れておくための変数
+    var tmp;
+    //後にキーがeventsのオブジェクトとして上書きするようのオブジェクト
+    var eventsObj = new Object();
+    switch (order) {
+        case 'minus':
+            for (var i=0; i<evtKeys.length; i++) {
+                //選択中のイベント-1のイベントだったら
+                if (i == targetIndex-1) {
+                    tmp = currentMapTip.events[evtKeys[i]]
+                    continue;
+                }
+                //選択中のイベントだったら
+                if (i == targetIndex) {
+                    //まずは普通に代入
+                    eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                    //退避しておいた一個前のオブジェクトを代入
+                    eventsObj[evtKeys[i-1]] = tmp;
+                    continue;
+                }
+                //通常
+                eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+            }
+            break;
+        case 'plus':
+            for (var i=0; i<evtKeys.length; i++) {
+                //選択中のイベントだったら
+                if (i == targetIndex) {
+                    tmp = currentMapTip.events[evtKeys[i]]
+                    continue;
+                }
+                //選択中のイベント+1のイベントだったら
+                if (i == targetIndex+1) {
+                    //まずは普通に代入
+                    eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                    //退避しておいた一個前のオブジェクトを代入
+                    eventsObj[evtKeys[i-1]] = tmp;
+                    continue;
+                }
+                //通常
+                eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+            }
+            break;
+    }
+
+    //eventsを更新
+    currentMapTip.events = eventsObj;
+    
+    //イベントのHTMLを更新
+    updateMapEventHTML();
+
+    var events = document.getElementsByClassName('registerdEvents');
+    events = Array.from(events);
+    events.forEach(function(event) {
+        if (event.innerHTML == currentRegisteredEvent) {
+            event.style.backgroundColor = 'yellow';
+        }
+    });
+}
+
+function updateMapEventHTML() {
     //トリガーチェック
     if (currentMapTip.hasOwnProperty('trigger')) {
         //登録ずみトリガーを表示
@@ -295,6 +385,12 @@ function showMapTipData(evt) {
     }
     //イベント追加ボタン
     mapEvent.innerHTML += '<p id="addEvent" onclick="addEvent()">イベントを追加</p>'
+    //イベント削除ボタン
+    mapEvent.innerHTML += '<p id="deleteEvent" onclick="deleteEvent()">イベントを削除</p>'
+    //イベント順番マイナスボタン
+    mapEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'minus\')">↑</p>'
+    //イベント順番プラスボタン
+    mapEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\')">↓</p>'
 }
 
 //現在マップチップのトリガーを表示
@@ -380,6 +476,36 @@ function addEvent() {
         evtListHtml += '<p class="event" onclick="setEvent(\'' + settingEvents[i] + '\')">' + settingEvents[i] +'</p>';
     }
     eventLists.innerHTML = evtListHtml;
+}
+
+//選択中のイベントを削除する
+function deleteEvent(evt) {
+
+    if (currentRegisteredEvent == '') {
+        alert('削除対象のイベントが選択されていません!');
+        return;
+    }
+
+    if (confirm('選択中のイベントを削除しますか？')) {
+        //削除
+        //対象のイベントを取得（ただ削除されるだけ、イベント名の先頭のインデックス番号は変更しない）
+        //var delTarget = evt.target.innerHTML;
+        //登録ずみイベントのキーを取得
+        var evtKeys = Object.keys(currentMapTip.events)
+        //一致するイベントを削除
+        for (var i=0; i<evtKeys.length; i++) {
+            if (evtKeys[i] == currentRegisteredEvent) {
+                delete currentMapTip.events[currentRegisteredEvent];
+                currentRegisteredEvent = '';
+                break;
+            }
+        }
+        //イベント編集ウィンドウを閉じる
+        editEvent.style.display = 'none';
+    }
+
+    //イベントのHTMLを更新
+    updateMapEventHTML();
 }
 
 //イベントのセッティング画面を表示する
@@ -490,17 +616,24 @@ function registEventToObj(evtName) {
                 currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
             } else {
                 //既存のイベントの場合
-                currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('talk').value;
+                currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
             }
             
         break;
     }
     //マップオブジェクトに現在マップオブジェクトの変更を反映
     currrentMapObj[rowNum][colNum] = currentMapTip;
-    //トリガーを更新
-    showMapTipTrigger();
+    
     //イベント一覧を更新
-    showMapTipEvents();
+    updateMapEventHTML();
+
+    var events = document.getElementsByClassName('registerdEvents');
+    events = Array.from(events);
+    events.forEach(function(event) {
+        if (event.innerHTML == currentRegisteredEvent) {
+            event.style.backgroundColor = 'yellow';
+        }
+    });
 }
 
 //編集中マップ情報をサーバに保存する、同時にrpg-playerにもプロジェクトのファイルを同期する

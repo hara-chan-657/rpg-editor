@@ -56,6 +56,28 @@
     text-align: center;
 }
 
+#deleteEvent {
+    background-color: red;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 130px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.changeEventOrder {
+    background-color: blue;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 130px;
+    cursor: pointer;
+    text-align: center;
+}
+
 #editEventContainer {
     border: 1px solid blue;
     display: none;
