@@ -26,6 +26,17 @@
 	background-color: white;
 }
 
+#transitionMap {
+    float: left;
+	border: 1px solid red;
+	display: inline-block;
+	overflow: scroll;
+	white-space:nowrap;
+	width: 320px;
+	height: 320px;
+	background-color: white;
+}
+
 #mapDataContainer {
     float: left;
 	border: 1px solid red;

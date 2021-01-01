@@ -30,14 +30,13 @@ var startPosY;
 var triggerLists = [
     "トリガー設定なし",
     "Aボタン",
-    "衝突",
+    "進入",
 ]
 //セット可能イベントリスト
 var settingEvents = [
     "talk",
     "question",
     "transition",
-    "enter",
     "encounter",
     "tool",
 ]
@@ -557,14 +556,99 @@ function setEvent(eventName) {
             editEvent.innerHTML = html;
             break;
         case 'transition':
-            break;
-        case 'enter':
+            var transitionMap = '';
+            if (registeredFlg) {
+                transitionMap = currentMapTip.events[orgEvtName].transitionMap;
+            }
+            var html = '<p>遷移</p>';
+            html += '<p>遷移先マップを選択</p>';
+            html += '<select id="setTransitionMap" onChange="setTransitionMap(this.value)">';
+            html += '<option value=""></option>';
+            for (i=0; i<mapNames.length; i++) {
+                if (mapNames[i] == transitionMap) {
+                    html += '<option value="' + mapNames[i].innerHTML + '" selected>' + mapNames[i].innerHTML + '</option>';
+                } else {
+                    html += '<option value="' + mapNames[i].innerHTML + '">' + mapNames[i].innerHTML + '</option>';
+                }
+            }
+            html += '</select>';
+            var transitionX = '';
+            var transitionY = '';
+            if (registeredFlg) {
+                transitionX = currentMapTip.events[orgEvtName].transitionX;
+                transitionY = currentMapTip.events[orgEvtName].transitionY;
+            }
+            html += '<p>遷移先マップチップを選択</p>';
+            html += '<p>遷移先（<span id="transitionX">' + transitionX + '</span>：<span id="transitionY">' + transitionY + '</span>）</p>';
+            //キャンバスで同じようにクリックで選択できるようにする
+            //onChangeはマップ切り替え
+            html += '<div id="transitionMap"><canvas id="transitionMapCanvas" onClick="getMousePositionOfTransition(event)"></canvas><img src="" id="transitionMapImage" style="display:none"></div>';
+            //遷移後のディレクションを指定
+            var directions = ['up','right','down','left'];
+            var direction = '';
+            if (registeredFlg) {
+                direction = currentMapTip.events[orgEvtName].transitionDirection;
+            }
+            html += '<p>遷移後のディレクションを選択</p>';
+            html += '<select id="transitionDirection" onChange="">';
+            for (i=0; i<directions.length; i++) {
+                if (directions[i] == direction) {
+                    html += '<option value="' + directions[i] + '" selected>' + directions[i] + '</option>';
+                } else {
+                    html += '<option value="' + directions[i] + '">' + directions[i] + '</option>';
+                }
+            }
+            html += '</select>';
+            html += '<p id="registEvent" onclick="registEventToObj(\'transition\')">この内容でイベント登録</p>';
+            editEvent.innerHTML = html;
             break;
         case 'encounter':
             break;
         case 'tool':
             break;
     }
+}
+
+function setTransitionMap(value) {
+    var transitionMapCanvas = document.getElementById('transitionMapCanvas');
+    var transitionMapContext = transitionMapCanvas.getContext('2d');
+    var transitionMapImage = document.getElementById('transitionMapImage');
+    //遷移先マップをクリア    
+    transitionMapContext.clearRect(0, 0, transitionMapCanvas.width, transitionMapCanvas.height);
+    //選択したマップを表示（キャンバス表示用に使う、非表示画像）
+    for (i=0; i<maps.length; i++) {
+        if (maps[i].alt == value) {
+            transitionMapImage.src = maps[i].src;
+            break;
+        }
+    }
+    //キャンバスの大きさを更新
+    transitionMapCanvas.height = transitionMapImage.naturalHeight;
+    transitionMapCanvas.width = transitionMapImage.naturalWidth;
+    //新しいマップを表示
+    transitionMapContext.drawImage(transitionMapImage, 0, 0);
+
+    document.getElementById('transitionX').innerHTML = '';
+    document.getElementById('transitionY').innerHTML = '';
+}
+
+//遷移先マップのポジションを取得する
+function getMousePositionOfTransition(evt) {
+    var transitionX = document.getElementById('transitionX');
+    var transitionY = document.getElementById('transitionY');
+
+    //クリックした座標を取得する
+    var rect = evt.target.getBoundingClientRect();
+    var x = evt.clientX - rect.left;
+    var y = evt.clientY - rect.top;
+
+    //クリックしたマップチップを特定
+	var tipX = Math.floor(x/mapLength);
+    var tipY = Math.floor(y/mapLength);
+    
+    //スタートポジション選択フラグがtrueの場合
+    transitionX.innerHTML = tipX;
+    transitionY.innerHTML = tipY;
 }
 
 //選択中のマップチップに通り抜け属性を付与する
@@ -598,16 +682,7 @@ function registEventToObj(evtName) {
     switch (evtName) {
         case 'talk':
             if (currentRegisteredEvent == '') {
-                //新規イベントの場合
-                if (!hasEventflg) {
-                    //イベントの配列用オブジェクト
-                    currentMapTip.events = new Object();
-                }
-                //現在マップチップのイベント数を数える
-                var evtObj  = currentMapTip.events;
-                var evtIndex = Object.keys(evtObj).length;
-                //イベントのキーを作成
-                var evtNameKey = evtIndex + '_' + evtName;
+                var evtNameKey = getEventKey(evtName);
                 //イベント名のキーごとにオブジェクトを作成
                 currentMapTip.events[evtNameKey] = new Object();
                 //トークのコンテンツを格納
@@ -620,23 +695,38 @@ function registEventToObj(evtName) {
 
         case 'question':
             if (currentRegisteredEvent == '') {
-                //新規イベントの場合
-                if (!hasEventflg) {
-                    //イベントの配列用オブジェクト
-                    currentMapTip.events = new Object();
-                }
-                //現在マップチップのイベント数を数える
-                var evtObj  = currentMapTip.events;
-                var evtIndex = Object.keys(evtObj).length;
-                //イベントのキーを作成
-                var evtNameKey = evtIndex + '_' + evtName;
+                var evtNameKey = getEventKey(evtName);
                 //イベント名のキーごとにオブジェクトを作成
-                currentMapTip.events[evtNameKey] = new Object();
+                currentMapTip.events[evtNameKey] = new Object(); 
                 //トークのコンテンツを格納
                 currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
             } else {
                 //既存のイベントの場合
                 currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
+            }
+            
+        break;
+
+        case 'transition':
+            if (currentRegisteredEvent == '') {
+                var evtNameKey = getEventKey(evtName);
+                //イベント名のキーごとにオブジェクトを作成
+                currentMapTip.events[evtNameKey] = new Object(); 
+                //トークのコンテンツを格納
+                currentMapTip.events[evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                //トークのコンテンツを格納
+                currentMapTip.events[evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                currentMapTip.events[evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                //トークのコンテンツを格納
+                currentMapTip.events[evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
+            } else {
+                //トークのコンテンツを格納
+                currentMapTip.events[currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                //トークのコンテンツを格納
+                currentMapTip.events[currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                currentMapTip.events[currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                //トークのコンテンツを格納
+                currentMapTip.events[currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
             }
             
         break;
@@ -654,6 +744,27 @@ function registEventToObj(evtName) {
             event.style.backgroundColor = 'yellow';
         }
     });
+
+    function getEventKey(evtName){
+        //新規イベントの場合
+        if (!hasEventflg) {
+            //イベントの配列用オブジェクト
+            currentMapTip.events = new Object();
+        }
+        //現在マップチップのイベント数を数える
+        //var evtObj  = currentMapTip.events;
+        //var evtIndex = Object.keys(evtObj).length;
+        //イベントのキーを作成
+        var now = new Date();
+        var Year = String(now.getFullYear());
+        var Month = String(now.getMonth()+1);
+        var date = String(now.getDate());
+        var Hour = String(now.getHours());
+        var Min = String(now.getMinutes());
+        var Sec = String(now.getSeconds());
+        var evtNameKey = Year + Month + date + Hour + Hour + Min + Sec + '_' + evtName;
+        return evtNameKey;
+    }
 }
 
 //編集中マップ情報をサーバに保存する、同時にrpg-playerにもプロジェクトのファイルを同期する
