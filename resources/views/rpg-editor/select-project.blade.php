@@ -1,5 +1,3 @@
-//プロジェクト選択用view!
-
 @extends('layouts.rpg-editor-parent')
 
 

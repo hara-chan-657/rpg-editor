@@ -1,3 +1,8 @@
+p {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
 #mapContainer {
     padding: 10px;
     overflow: hidden;
@@ -67,6 +72,17 @@
     text-align: center;
 }
 
+#addObject {
+    background-color: orange;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 160px;
+    cursor: pointer;
+    text-align: center;
+}
+
 #deleteEvent {
     background-color: red;
     color: white;
@@ -74,6 +90,28 @@
     padding: 0px;
     margin:0px;
     width: 130px;
+    cursor: pointer;
+    text-align: center;
+}
+
+#changeObject {
+    background-color: lightgreen;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    /*width: 130px;*/
+    cursor: pointer;
+    text-align: center;
+}
+
+#deleteObject {
+    background-color: red;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    /*width: 130px;*/
     cursor: pointer;
     text-align: center;
 }
@@ -94,9 +132,22 @@
     display: none;
 }
 
+#editObjectContainer {
+    border: 1px solid blue;
+    display: ;
+}
+
 .event {
     margin: 2px;
-    background-color: yellow;
+    background-color: green;
+    color: white;
+    cursor: pointer;
+    text-align: center;
+}
+
+.object {
+    margin: 2px;
+    background-color: skyblue;
     color: white;
     cursor: pointer;
     text-align: center;
@@ -126,3 +177,74 @@
 float: left;
 margin: 0px 3px;
 }
+
+#newCharacter {
+    /* 高さ認識用 */
+    overflow:hidden;
+}
+
+.eachCharacterContainer {
+    /* display: inline; */
+    float: left;
+    margin: 0px 3px;
+}
+
+.eachCharacterContainer img {
+    display: block;
+}
+
+.registeredCharacterContainer {
+    /* display: inline; */
+    float: left;
+    margin: 0px 3px;
+}
+
+.registeredCharacterContainer img {
+    display: block;
+}
+
+.eventCharacterContainer {
+    border: 1px solid green;
+    float: left;
+}
+
+.eventCharacter {
+    border: 1px solid green;
+    overflow: scroll;
+	white-space:nowrap;
+	height: 480px;
+}
+
+#oldSkills {
+    overflow: hidden;
+}
+
+.registeredSkillContainer {
+    float: left;
+    margin: 3px 3px;
+    border: 1px solid lime;
+}
+.registeredSpecialSkillContainer {
+    float: left;
+    margin: 0px 3px;
+    border: 1px solid red;
+}
+
+.registeredToolContainer {
+    float: left;
+    margin: 3px 3px;
+    border: 1px solid lime;
+}
+
+#charaObjContainer {
+}
+
+#toolObjContainer {
+}
+
+.imagesContainer {
+    max-height: 250px;
+    overflow: scroll;
+    border: 1px solid lime;
+}
+

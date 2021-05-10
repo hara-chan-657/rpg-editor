@@ -22,6 +22,8 @@ var rowNum;
 var currentMapTip;
 //スタートポジション選択フラグ
 var editStartPosFlg = false;
+//マップチップエクスポートフラグ
+var exportMapChipFlg = false;
 //スタートポジションX
 var startPosX;
 //スタートポジションY
@@ -37,11 +39,20 @@ var settingEvents = [
     "talk",
     "question",
     "transition",
-    "encounter",
+    "battle",
     "tool",
 ]
+//セット可能オブジェクト
+var settingObjects = [
+    "tool",
+    "character",
+]
+
 //現在選択中登録済みイベント
 var currentRegisteredEvent = '';
+
+//現在選択中登録済みオブジェクトイベント
+var currentRegisteredObjEvent = '';
 
 //================================ 各種エレメント ===============================================//
 //スタートプロジェクト設定コンテナ
@@ -77,8 +88,20 @@ var editEventContainer = document.getElementById('editEventContainer');
 var eventLists = document.getElementById('eventLists');
 //イベント編集
 var editEvent = document.getElementById('editEvent');
+//マップオブジェクト
+var mapObject = document.getElementById('mapObject');
+//オブジェクト編集コンテナ
+var editObjectContainer = document.getElementById('editObjectContainer');
+//オブジェクトリスト
+var objLists = document.getElementById('objLists');
+//オブジェクトリスト
+var objEventLists = document.getElementById('objEventLists');
 //マップ保存
 var saveMap = document.getElementById('saveMap');
+// //キャラオブジェクト
+// var objCharas = document.getElementsByClassName('obj_charas');
+// //ツールオブジェクト
+// var objTools = document.getElementsByClassName('obj_tools');
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -93,6 +116,9 @@ saveStartPos.addEventListener('click', saveStartPosition, false);
 stopEditStartPos.addEventListener('click', stopEditStartPosition, false);
 currentMapCanvas.addEventListener('click', function(evt) {showMapTipData(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
+// for (var i=0; i<objCharas.length; i++) {
+//     objCharas[i].addEventListener('click', function(evt) {selectObjectImage(evt);}, false);
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////　　以下ファンクション   //////////////////////////////////////////
@@ -125,6 +151,24 @@ function setEditMap(evt) {
     currrentMapName = evt.target.alt;
     //スタートプロジェクトかチェック
     checkIsStartProject();
+    //登録済みのイベントとオブジェクトを描画
+    drawEvtAndObj();
+    //グリッド表示
+    drawGrid();
+}
+
+
+//編集マップをリロード
+function reloadEditMap() {
+    //マップをいったんクリアして際描画
+    currentMapContext.clearRect(0, 0, currentMapCanvas.width, currentMapCanvas.height);
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+    //スタートプロジェクトかチェック
+    checkIsStartProject();
+    //イベントとオブジェクト描画
+    drawEvtAndObj();
+    //グリッド表示
+    drawGrid();
 }
 
 //プロジェクトのjsonをすべてオブジェクトにロードする
@@ -261,6 +305,12 @@ function showMapTipData(evt) {
         return;
     }
 
+    if (exportMapChipFlg) {
+        var dist = document.getElementById('exportDist');
+        dist.innerHTML = '(<span id="expX">' + colNum + '</span>:<span id="expY">' + rowNum + '</span>)';
+        return;
+    }
+
     //現在マップオブジェクトから、選択したマップの情報を取得
     currentMapTip = currrentMapObj[rowNum][colNum];
     switch (currentMapTip.maptipType) {
@@ -279,22 +329,102 @@ function showMapTipData(evt) {
         case 5:
             mapTypeName.innerText = '建物 (' + colNum + ':' + rowNum + ')';
             break;
+        case 6:
+            mapTypeName.innerText = '地形繰り返し (' + colNum + ':' + rowNum + ')';
+            break;
+        case 7:
+            mapTypeName.innerText = '地形交互 (' + colNum + ':' + rowNum + ')';
+            break;
     }
+
+    mapTypeName.innerHTML += '<button onclick="exportMapChip()">エクスポート</button>';
+
+    //イベント追加ウィンドウを閉じる
+    editEventContainer.style.display = 'none';
+    editEvent.style.display = 'none';
 
     //イベントのHTMLを更新
     updateMapEventHTML();
 
 }
 
-function changeEventOrder(evt, order) {
-    if (currentRegisteredEvent == '') {
-        alert('移動対象のイベントが選択されていません!');
+function exportMapChip() {
+    exportMapChipFlg = true;
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = 'none';
+    mapDataContainer.style.backgroundColor = 'gray';
+    var html = '';
+    html += '<p>エクスポート先のマップチップをクリックしてください</p>';
+    html += '<p>エクスポート先：<span id="exportDist"></span></p>';
+    html += '<button onclick="quitExportMapChip()">やめる</button>';
+    html += '<button onclick="doExportMapChip()">上記にエクスポート</button>';
+    editEvent.innerHTML = html;
+    editEvent.style.display = 'inline-block';
+}
+
+function quitExportMapChip() {
+    exportMapChipFlg = false;
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = '';
+    mapDataContainer.style.backgroundColor = '';
+    editEvent.innerHTML = '';
+    editEvent.style.display = 'none';
+}
+
+function doExportMapChip() {
+    var expX = document.getElementById("expX");
+    var expY = document.getElementById("expY");
+
+    if (expX == null || expY == null) {
+        alert('エクスポート先を選択してください！');
         return;
     }
+
+    expX = expX.innerText;
+    expY = expY.innerText;
+
+    if (!confirm('エクスポート先に設定している情報は消えてしまいます。\nよろしいですか？')) {
+        return;
+    }
+    //トリガー、イベント、オブジェクト、マップパスをエクスポート
+    if (currentMapTip.hasOwnProperty('trigger')) {
+        currrentMapObj[expY][expX].trigger = currentMapTip.trigger;
+        delete currentMapTip.trigger;
+    }
+    if (currentMapTip.hasOwnProperty('events')) {
+        currrentMapObj[expY][expX].events = currentMapTip.events;
+        delete currentMapTip.events;
+    }
+    if (currentMapTip.hasOwnProperty('object')) {
+        currrentMapObj[expY][expX].object = currentMapTip.object;
+        delete currentMapTip.object;
+    }
+    if (currentMapTip.hasOwnProperty('pass')) {
+        if (currrentMapObj[expY][expX].maptipType != 3) {
+            currrentMapObj[expY][expX].object = currentMapTip.object;
+        } else {
+            alert('エクスポート失敗：エクスポート先は地形通り抜けなので、pass属性はエクスポートされませんでした。');
+        }
+        delete currentMapTip.pass;
+    }
+    exportMapChipFlg = false;
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = '';
+    mapDataContainer.style.backgroundColor = '';
+    editEvent.innerHTML = '';
+    editEvent.style.display = 'none';
+    updateMapEventHTML();
+}
+
+function changeEventOrder(evt, order, objFlg = false) {
     // 選択中のイベントのインデックス
     var targetIndex;
     //登録ずみイベントのキーを取得
-    var evtKeys = Object.keys(currentMapTip.events)
+    if (objFlg == false) {
+        var evtKeys = Object.keys(currentMapTip.events)
+    } else {
+        var evtKeys = Object.keys(currentMapTip.object.events)
+    }
     //選択中のイベントと一致するイベントのインデックスを取得
     for (var i=0; i<evtKeys.length; i++) {
         if (evtKeys[i] == currentRegisteredEvent) {
@@ -305,59 +435,115 @@ function changeEventOrder(evt, order) {
             }
             break;
         }
+        if (i == evtKeys.length-1) {
+            //最後まで見つからなかった場合、イベントが選択されていないため、リターン
+            alert('移動対象のイベントが選択されていません!');
+            return;
+        }
     }
     //入れ替えように一時的にイベントを入れておくための変数
     var tmp;
     //後にキーがeventsのオブジェクトとして上書きするようのオブジェクト
     var eventsObj = new Object();
-    switch (order) {
-        case 'minus':
-            for (var i=0; i<evtKeys.length; i++) {
-                //選択中のイベント-1のイベントだったら
-                if (i == targetIndex-1) {
-                    tmp = currentMapTip.events[evtKeys[i]]
-                    continue;
-                }
-                //選択中のイベントだったら
-                if (i == targetIndex) {
-                    //まずは普通に代入
+    if (objFlg == false) {
+        switch (order) {
+            case 'minus':
+                for (var i=0; i<evtKeys.length; i++) {
+                    //選択中のイベント-1のイベントだったら
+                    if (i == targetIndex-1) {
+                        tmp = currentMapTip.events[evtKeys[i]]
+                        continue;
+                    }
+                    //選択中のイベントだったら
+                    if (i == targetIndex) {
+                        //まずは普通に代入
+                        eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                        //退避しておいた一個前のオブジェクトを代入
+                        eventsObj[evtKeys[i-1]] = tmp;
+                        continue;
+                    }
+                    //通常
                     eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
-                    //退避しておいた一個前のオブジェクトを代入
-                    eventsObj[evtKeys[i-1]] = tmp;
-                    continue;
                 }
-                //通常
-                eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
-            }
             break;
-        case 'plus':
-            for (var i=0; i<evtKeys.length; i++) {
-                //選択中のイベントだったら
-                if (i == targetIndex) {
-                    tmp = currentMapTip.events[evtKeys[i]]
-                    continue;
-                }
-                //選択中のイベント+1のイベントだったら
-                if (i == targetIndex+1) {
-                    //まずは普通に代入
+            case 'plus':
+                for (var i=0; i<evtKeys.length; i++) {
+                    //選択中のイベントだったら
+                    if (i == targetIndex) {
+                        tmp = currentMapTip.events[evtKeys[i]]
+                        continue;
+                    }
+                    //選択中のイベント+1のイベントだったら
+                    if (i == targetIndex+1) {
+                        //まずは普通に代入
+                        eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                        //退避しておいた一個前のオブジェクトを代入
+                        eventsObj[evtKeys[i-1]] = tmp;
+                        continue;
+                    }
+                    //通常
                     eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
-                    //退避しておいた一個前のオブジェクトを代入
-                    eventsObj[evtKeys[i-1]] = tmp;
-                    continue;
                 }
-                //通常
-                eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
-            }
             break;
-    }
+        }
 
-    //eventsを更新
-    currentMapTip.events = eventsObj;
+        //eventsを更新
+        currentMapTip.events = eventsObj;
+
+    } else {
+        switch (order) {
+            case 'minus':
+                for (var i=0; i<evtKeys.length; i++) {
+                    //選択中のイベント-1のイベントだったら
+                    if (i == targetIndex-1) {
+                        tmp = currentMapTip.object.events[evtKeys[i]]
+                        continue;
+                    }
+                    //選択中のイベントだったら
+                    if (i == targetIndex) {
+                        //まずは普通に代入
+                        eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                        //退避しておいた一個前のオブジェクトを代入
+                        eventsObj[evtKeys[i-1]] = tmp;
+                        continue;
+                    }
+                    //通常
+                    eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                }
+            break;
+            case 'plus':
+                for (var i=0; i<evtKeys.length; i++) {
+                    //選択中のイベントだったら
+                    if (i == targetIndex) {
+                        tmp = currentMapTip.object.events[evtKeys[i]]
+                        continue;
+                    }
+                    //選択中のイベント+1のイベントだったら
+                    if (i == targetIndex+1) {
+                        //まずは普通に代入
+                        eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                        //退避しておいた一個前のオブジェクトを代入
+                        eventsObj[evtKeys[i-1]] = tmp;
+                        continue;
+                    }
+                    //通常
+                    eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                }
+            break;
+        }
+
+        //eventsを更新
+        currentMapTip.object.events = eventsObj;
+    }
     
     //イベントのHTMLを更新
     updateMapEventHTML();
 
-    var events = document.getElementsByClassName('registerdEvents');
+    if (objFlg == false) {
+        var events = document.getElementsByClassName('registerdEvents');
+    } else {
+        var events = document.getElementsByClassName('registerdEventsForObj');
+    }
     events = Array.from(events);
     events.forEach(function(event) {
         if (event.innerHTML == currentRegisteredEvent) {
@@ -375,6 +561,8 @@ function updateMapEventHTML() {
         } else {
             mapPassProperty.innerHTML = '<p>通り抜け設定：無し<button onclick="setPassProperty(\'add\')">追加する</button></p>';
         }
+    } else {
+        mapPassProperty.innerHTML = '';
     }
 
     //トリガーチェック
@@ -394,19 +582,155 @@ function updateMapEventHTML() {
         mapEvent.innerHTML = '<p>イベントはありません</p>';
     }
     //イベント追加ボタン
-    mapEvent.innerHTML += '<p id="addEvent" onclick="addEvent()">イベントを追加</p>'
+    mapEvent.innerHTML += '<p id="addEvent" onclick="addEvent()">イベントを追加</p>';
     //イベント削除ボタン
-    mapEvent.innerHTML += '<p id="deleteEvent" onclick="deleteEvent()">イベントを削除</p>'
+    mapEvent.innerHTML += '<p id="deleteEvent" onclick="deleteEvent()">イベントを削除</p>';
     //イベント順番マイナスボタン
-    mapEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'minus\')">↑</p>'
+    mapEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'minus\')">↑</p>';
     //イベント順番プラスボタン
-    mapEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\')">↓</p>'
+    mapEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\')">↓</p>';
+
+    //オブジェクトチェック
+    if (currentMapTip.hasOwnProperty('object')) {
+        var objName = currentMapTip.object.objName;
+        var imgName = currentMapTip.object.imgName;
+        var img = document.getElementById(imgName);
+        mapObject.innerHTML = '<p>オブジェクト名：' + objName + '</p>';
+        mapObject.innerHTML += '<img src="' + decodeURI(img.src) +'"></img>';
+        mapObject.innerHTML += '<p id="deleteObject" onclick="deleteObject()">オブジェクトを削除する※注意</p>';
+        if (objName == 'tool') {
+            //拾いイベントだけ
+            mapObject.innerHTML += '<p>拾いイベントのみです</p>';
+        } else if (objName == 'character') {
+            mapObject.innerHTML += '<p>トリガはAボタン</p>';
+            //mapObject.innerHTML += '<p>クリーチャーを選択</p>';
+            //イベントチェック
+            if (currentMapTip['object'].hasOwnProperty('events')) {
+                //登録ずみイベント一覧を表示
+                showMapTipEvents(true);
+            } else {
+                mapObject.innerHTML += '<p>イベントはありません</p>';
+            }
+            //イベント追加ボタン
+            mapObject.innerHTML += '<p id="addEvent" onclick="addEvent(true)">イベントを追加</p>';
+            //イベント削除ボタン
+            mapObject.innerHTML += '<p id="deleteEvent" onclick="deleteEvent(true)">イベントを削除</p>';
+            //イベント順番マイナスボタン
+            mapObject.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'minus\', true)">↑</p>';
+            //イベント順番プラスボタン
+            mapObject.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\', true)">↓</p>';
+        } else {
+        }
+    } else {
+        mapObject.innerHTML = '<p>オブジェクトはありません</p>';
+        mapObject.innerHTML += '<p id="addObject" onclick="addObject()">オブジェクトを追加</p>';
+        editObjectContainer.style.display = 'none'; //デフォルトは必ず非表示
+    }
+
+    reloadEditMap();
+}
+
+function deleteObject() {
+    if (!confirm('※注意！\n\nオブジェクトを削除すると、オブジェクトに設定されているイベントも全て削除されます。\n\nよろしいですか？')) return;
+    delete currentMapTip.object;
+    updateMapEventHTML();
+}
+
+//マップにイベント追加のdivを表示する
+function addObject(objFlg = false) {
+    currentRegisteredEvent = '';
+    //イベント編集divは閉じる
+    editEvent.style.display = 'none';
+    //登録済みイベント選択中を示す背景色をクリア
+    if (objFlg == false) {
+        var events = document.getElementsByClassName('registerdEvents');
+    } else {
+        var events = document.getElementsByClassName('registerdEventsForObj');
+    }
+    events = Array.from(events);
+    events.forEach(function(event) {
+        // いったん全部のイベントの背景色をクリアする
+        event.style.backgroundColor = '';
+    });
+    currentRegisteredObjEvent = '';
+    editObjectContainer.style.display = 'inline-block';
+    var objListHtml = '<p>追加するオブジェクトを選択</p>';
+    for (var i=0; i<settingObjects.length; i++) {
+        objListHtml += '<p class="object" onclick="setObject(\'' + settingObjects[i] + '\')">' + settingObjects[i] +'</p>';
+    }
+    objLists.innerHTML = objListHtml;
+}
+
+//オブジェクトをマップチップにセットする
+function setObject(objectName) {
+        //objLists.innerHTML = '';
+        //イベント一覧を更新
+        //updateMapEventHTML();
+        var html = '';
+        //var objName = currentMapTip.object.objName;
+        html += '<p>オブジェクト名：' + objectName + '</p>';
+        html += '<span>選択中のオブジェクト</span><img id="selectedObjImage" src=""></img>';
+        if (objectName == 'tool') {
+            html += '<p>ツールを選択</p>';
+            html += '<div class="imagesContainer">';
+            var objTools = document.getElementById('toolObjContainer');
+            html += objTools.innerHTML;
+            html += '</div>'
+            //拾いイベントだけ
+        } else if (objectName == 'character') {
+            //html += '<p>トリガはAボタン</p>';
+            html += '<p>キャラクターを選択</p>';
+            html += '<div class="imagesContainer">';
+            var objCharas = document.getElementById('charaObjContainer');
+            html += objCharas.innerHTML;
+            html += '</div>'
+        } else {
+        }
+        html += '<p onclick="registObject(\'' + objectName + '\')">オブジェクトを登録する</p>';
+        //オブジェクトセットの際は、イベント編集ウィンドウをお借りする
+        editEvent.innerHTML = html;
+        editEvent.style.display = 'inline-block';
+}
+
+//選択したオブジェクトを、選択中オブジェクトに表示する
+function selectObjectImage(evt) {
+    var selectedObjImage = document.getElementById('selectedObjImage');
+    var tmp = decodeURI(evt.target.src);
+    selectedObjImage.src = tmp;
+    
+}
+
+//選択したワイプを、選択中ワイプに表示する
+function selectWipeImage(evt) {
+    var selectedWipeImage = document.getElementById('selectedWipeImage');
+    var tmp = decodeURI(evt.target.src);
+    selectedWipeImage.src = tmp;
+    
+}
+
+function registObject(objectName) {
+    //オブジェクトをマップちっぷに登録
+    currentMapTip.object = new Object(); 
+    currentMapTip.object.objName = objectName;
+    var fullSrc = decodeURI(document.getElementById('selectedObjImage').src);
+    var imgName = fullSrc.split("/").reverse()[0]
+
+    currentMapTip.object.imgName = imgName;
+    currentMapTip.object.trigger = 'Aボタン'; //オブジェクトのトリガはAボタン固定なので、意味あるかわからないが、、
+    currrentMapObj[rowNum][colNum] = currentMapTip;
+
+    //イベント編集ウィンドウ、オブジェクト追加ウィンドウを閉じて、イベントコンテナ更新
+    editEvent.style.display = 'none';
+    editObjectContainer.style.display = 'none';
+    //objLists.style.display = 'none';
+    objLists.innerHTML = '';
+    updateMapEventHTML();
 }
 
 //現在マップチップのトリガーを表示
 function showMapTipTrigger(trigger) {
     var html = '<select id="trigger" onChange="saveTriggerToObj()">';
-    for (i=0; i<triggerLists.length; i++) {
+    for (var i=0; i<triggerLists.length; i++) {
         if (triggerLists[i] == trigger) {
             html += '<option value="' + triggerLists[i] + '" selected>' + triggerLists[i] + '</option>';
         } else {
@@ -423,24 +747,39 @@ function saveTriggerToObj() {
 }
 
 //現在マップチップのイベントを表示
-function showMapTipEvents() {
+function showMapTipEvents(objFlg = false) {
     var html = '<p>設定済みイベント一覧</p>';
     html += '<ul>';
     var evtIndex = 0;
-    for( key in currentMapTip.events ) {
-        html += '<li class="registerdEvents" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\')">' + key + '</li>';
-        evtIndex++;
+    if (objFlg == false) {
+        for( key in currentMapTip.events ) {
+            html += '<li class="registerdEvents" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\')">' + key + '</li>';
+            evtIndex++;
+        }
+        html += '</ul>';
+        mapEvent.innerHTML = html;
+    } else {
+        for( key in currentMapTip.object.events ) {
+            html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>';
+            evtIndex++;
+        }
+        html += '</ul>';
+        mapObject.innerHTML += html; //+=なのに注意。クリーチャーオブジェクトの場合、クリーチャーであることを直前のタグで表示しないと分かりづらいため。
     }
-    html += '</ul>';
-    mapEvent.innerHTML = html;
 }
 
 //登録済みイベントクリック時、イベントを選択状態にする。
-function selectRegisterdEvent(e, evtIndex) {
+function selectRegisterdEvent(e, evtIndex, objFlg = false) {
     //クリックしたイベントを選択状態にする
     var events = document.getElementsByClassName('registerdEvents');
+    var eventsForObj = document.getElementsByClassName('registerdEventsForObj');
     events = Array.from(events);
     events.forEach(function(event) {
+        // いったん全部のイベントの背景色をクリアする
+        event.style.backgroundColor = '';
+    });
+    eventsForObj = Array.from(eventsForObj);
+    eventsForObj.forEach(function(event) {
         // いったん全部のイベントの背景色をクリアする
         event.style.backgroundColor = '';
     });
@@ -448,11 +787,20 @@ function selectRegisterdEvent(e, evtIndex) {
     e.target.style.backgroundColor = 'yellow';
     //選択した登録済みのイベントの詳細を表示する
     currentRegisteredEvent = e.target.innerHTML;
-    //イベント追加ウィンドウを閉じる
-    editEventContainer.style.display = 'none';
-    editEvent.style.display = 'none';
-    //登録時の入力内容をそのまま表示する
-    setEvent(currentRegisteredEvent);
+    if (objFlg == false) {
+        //イベント追加ウィンドウを閉じる
+        editEventContainer.style.display = 'none';
+        editEvent.style.display = 'none';
+        //登録時の入力内容をそのまま表示する
+        setEvent(currentRegisteredEvent);
+    } else {
+        //イベント追加ウィンドウを閉じる
+        editObjectContainer.style.display = 'none';
+        editEvent.style.display = 'none';
+        //登録時の入力内容をそのまま表示する
+        setEvent(currentRegisteredEvent, true);
+    }
+
 
 }
 
@@ -469,23 +817,38 @@ function getMousePosition(currentMapCanvas, evt) {
 }
 
 //マップにイベント追加のdivを表示する
-function addEvent() {
+function addEvent(objFlg = false) {
     currentRegisteredEvent = '';
-    editEventContainer.style.display = 'inline-block';
+    if (objFlg == false) {
+        editEventContainer.style.display = 'inline-block';
+    } else {
+        editObjectContainer.style.display = 'inline-block';    
+    }
     //イベント編集divは閉じる
     editEvent.style.display = 'none';
     //登録済みイベント選択中を示す背景色をクリア
-    var events = document.getElementsByClassName('registerdEvents');
+    if (objFlg == false) {
+        var events = document.getElementsByClassName('registerdEvents');
+    } else {
+        var events = document.getElementsByClassName('registerdEventsForObj');
+    }
     events = Array.from(events);
     events.forEach(function(event) {
         // いったん全部のイベントの背景色をクリアする
         event.style.backgroundColor = '';
     });
     var evtListHtml = '<p>追加するイベントを選択</p>';
-    for (i=0; i<settingEvents.length; i++) {
-        evtListHtml += '<p class="event" onclick="setEvent(\'' + settingEvents[i] + '\')">' + settingEvents[i] +'</p>';
+    if (objFlg == false) {
+        for (var i=0; i<settingEvents.length; i++) {
+            evtListHtml += '<p class="event" onclick="setEvent(\'' + settingEvents[i] + '\')">' + settingEvents[i] +'</p>';
+        }
+        eventLists.innerHTML = evtListHtml;
+    } else {
+        for (var i=0; i<settingEvents.length; i++) {
+            evtListHtml += '<p class="event" onclick="setEvent(\'' + settingEvents[i] + '\', true)">' + settingEvents[i] +'</p>';
+        }
+        objEventLists.innerHTML = evtListHtml;
     }
-    eventLists.innerHTML = evtListHtml;
 }
 
 //選択中のイベントを削除する
@@ -521,51 +884,108 @@ function deleteEvent(evt) {
 //イベントのセッティング画面を表示する
 //イベントが既存だった場合→編集
 //イベントが新規だった場合→登録
-function setEvent(eventName) {
+function setEvent(eventName, objFlg = false) {
     var orgEvtName = eventName; //既存イベントの際に使用
     var registeredFlg = false;
     var firstLetter = eventName.substr(0, 1);
     //イベント名が数字始まりだった場合（既存のイベント）の処理。変なイベント登録仕様にした過去の自分に後悔。
     if (isNaN(firstLetter) == false) {
-        var eventName = eventName.substr(2);
+        //イベントネームを取得
+        var index = eventName.indexOf('_');
+        var eventName = eventName.substr(index+1);
         registeredFlg = true; //登録済みのイベントと判定
     }
     editEvent.style.display = 'inline-block';
-    var html;
+    var html = '';
+    if (objFlg == false) {
+        html = '<p style="background-color:lime;" align="center">==マップイベント==</p>';
+    } else {
+        html = '<p style="background-color:violet;" align="center">==オブジェクトイベント==</p>';
+    }
     switch (eventName) {
         case 'talk':
             var talkContent = '';
-            if (registeredFlg) {
-                talkContent = currentMapTip.events[orgEvtName].talkContent;
+            var wipeSrc = '';
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    talkContent = currentMapTip.events[orgEvtName].talkContent;
+                    if (currentMapTip.events[orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = decodeURI(document.getElementById(currentMapTip.events[orgEvtName].wipe).src);
+                    }
+                }
+            } else {
+                if (registeredFlg) {
+                    talkContent = currentMapTip.object.events[orgEvtName].talkContent;
+                    if (currentMapTip.object.events[orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = decodeURI(document.getElementById(currentMapTip.object.events[orgEvtName].wipe).src);
+                    }
+                }
             }
-            html = '<p>会話</p>';
+            html += '<p>【会話】</p>';
+            html += '<p>ワイプを選択（なしでもOK）</p>';
+            html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
+            html += '<div class="imagesContainer">';
+            html += document.getElementById('wipeContainer').innerHTML;
+            html += '</div>';
             html += '<p>会話の内容を入力</p>';
             html += '<textarea id="talk">' + talkContent + '</textarea>';
-            html += '<p id="registEvent" onclick="registEventToObj(\'talk\')">この内容でイベント登録</p>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'talk\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'talk\', true)">この内容でイベント登録</p>';
+            }
             editEvent.innerHTML = html;
             break;
         case 'question':
             var questionContent = '';
-            if (registeredFlg) {
-                questionContent = currentMapTip.events[orgEvtName].questionContent;
+            var wipeSrc = '';
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    questionContent = currentMapTip.events[orgEvtName].questionContent;
+                    if (currentMapTip.events[orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = decodeURI(document.getElementById(currentMapTip.events[orgEvtName].wipe).src);
+                    }
+                }
+            } else {
+                if (registeredFlg) {
+                    questionContent = currentMapTip.object.events[orgEvtName].questionContent;
+                    if (currentMapTip.object.events[orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = decodeURI(document.getElementById(currentMapTip.object.events[orgEvtName].wipe).src);
+                    }
+                }
             }
-            html = '<p>質問</p>';
+            html += '<p>【質問】</p>';
+            html += '<p>ワイプを選択（なしでもOK）</p>';
+            html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
+            html += '<div class="imagesContainer">';
+            html += document.getElementById('wipeContainer').innerHTML;
+            html += '</div>';
             html += '<p>質問の内容を入力</p>';
             html += '<textarea id="question">' + questionContent + '</textarea>';
-            html += '<p id="registEvent" onclick="registEventToObj(\'question\')">この内容でイベント登録</p>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'question\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'question\',true)">この内容でイベント登録</p>';
+            }
             editEvent.innerHTML = html;
             break;
         case 'transition':
             var transitionMap = '';
-            if (registeredFlg) {
-                transitionMap = currentMapTip.events[orgEvtName].transitionMap;
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    transitionMap = currentMapTip.events[orgEvtName].transitionMap;
+                }
+            } else {
+                if (registeredFlg) {
+                    transitionMap = currentMapTip.object.events[orgEvtName].transitionMap;
+                }
             }
-            var html = '<p>遷移</p>';
+            html += '<p>【遷移】</p>';
             html += '<p>遷移先マップを選択</p>';
-            html += '<select id="setTransitionMap" onChange="setTransitionMap(this.value)">';
+            html += '<select id="setTransitionMap" onChange="setTransitionMap(this.value,\'' + orgEvtName + '\')">';
             html += '<option value=""></option>';
-            for (i=0; i<mapNames.length; i++) {
-                if (mapNames[i] == transitionMap) {
+            for (var i=0; i<mapNames.length; i++) {
+                if (mapNames[i].innerHTML == transitionMap) {
                     html += '<option value="' + mapNames[i].innerHTML + '" selected>' + mapNames[i].innerHTML + '</option>';
                 } else {
                     html += '<option value="' + mapNames[i].innerHTML + '">' + mapNames[i].innerHTML + '</option>';
@@ -591,7 +1011,7 @@ function setEvent(eventName) {
             }
             html += '<p>遷移後のディレクションを選択</p>';
             html += '<select id="transitionDirection" onChange="">';
-            for (i=0; i<directions.length; i++) {
+            for (var i=0; i<directions.length; i++) {
                 if (directions[i] == direction) {
                     html += '<option value="' + directions[i] + '" selected>' + directions[i] + '</option>';
                 } else {
@@ -599,37 +1019,265 @@ function setEvent(eventName) {
                 }
             }
             html += '</select>';
-            html += '<p id="registEvent" onclick="registEventToObj(\'transition\')">この内容でイベント登録</p>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'transition\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'transition\',true)">この内容でイベント登録</p>';
+            }
             editEvent.innerHTML = html;
+            setTransitionMap(transitionMap, orgEvtName);
             break;
-        case 'encounter':
+        case 'battle':
+            //対戦相手や技の情報は、別画面で編集しておく仕様にしておき、ここではそこから選ぶだけの仕様にする
+            //三体まで増やせるようにする
+            var charaGroup = '';
+            var isBoss = '';
+            var charaId1 = '0';
+            var charaId2 = '0';
+            var charaId3 = '0';
+            var chara1 = 'キャラ1';
+            var chara2 = 'キャラ2（メイン）';
+            var chara3 = 'キャラ3';
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    charaGroup = currentMapTip.events[orgEvtName].charaGroup;
+                    isBoss = currentMapTip.events[orgEvtName].isBoss;
+                    //キャラ1
+                    charaId1 = currentMapTip.events[orgEvtName].chara1;
+                    var chrIndex1 = currentMapTip.events[orgEvtName].chara1;
+                    chara1 = projectDataObj['characters'][chrIndex1].chrName;
+                    //キャラ2
+                    charaId2 = currentMapTip.events[orgEvtName].chara2;
+                    var chrIndex2 = currentMapTip.events[orgEvtName].chara2;
+                    chara2 = projectDataObj['characters'][chrIndex2].chrName;
+                    //キャラ3
+                    charaId3 = currentMapTip.events[orgEvtName].chara3;
+                    var chrIndex3 = currentMapTip.events[orgEvtName].chara3;
+                    chara3 = projectDataObj['characters'][chrIndex3].chrName;
+                }
+            } else {
+                if (registeredFlg) {
+                    charaGroup = currentMapTip.object.events[orgEvtName].charaGroup;
+                    isBoss = currentMapTip.object.events[orgEvtName].isBoss;
+                    //キャラ1
+                    charaId1 = currentMapTip.object.events[orgEvtName].chara1;
+                    var chrIndex1 = currentMapTip.object.events[orgEvtName].chara1;
+                    chara1 = projectDataObj['characters'][chrIndex1].chrName;
+                    //キャラ2
+                    charaId2 = currentMapTip.object.events[orgEvtName].chara2;
+                    var chrIndex2 = currentMapTip.object.events[orgEvtName].chara2;
+                    chara2 = projectDataObj['characters'][chrIndex2].chrName;
+                    //キャラ3
+                    charaId3 = currentMapTip.object.events[orgEvtName].chara3;
+                    var chrIndex3 = currentMapTip.object.events[orgEvtName].chara3;
+                    chara3 = projectDataObj['characters'][chrIndex3].chrName;
+                }
+            }
+            html += '<p>【バトル】</p>';
+            html += '<p>対戦キャラクターを選択</p>';
+            html += '<span>グループ名</span><input type="text" value="' + charaGroup + '" id="charaGroup"/><br>';
+            if (isBoss == 1) {
+                html += '<span>グループタイプ</span><select id="isBoss"><option value="0">通常</option><option value="1" selected>ボス</option></select>';
+            } else {
+                html += '<span>グループタイプ</span><select id="isBoss"><option value="0" selected>通常</option><option value="1">ボス</option></select>';
+            }
+            html += '<div style="overflow:hidden;">'; //高さ認識用
+            html += '<div class="eventCharacterContainer">';
+            html += '<p id="chara1" title="' + charaId1 +'">' + chara1 + '</p>';
+            html += '<div class="eventCharacter">';
+            html += document.getElementById('characters').innerHTML;
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="eventCharacterContainer">';
+            html += '<p id="chara2" title="' + charaId2 +'">' + chara2 + '</p>';
+            html += '<div class="eventCharacter">';
+            html += document.getElementById('characters').innerHTML;
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="eventCharacterContainer">';
+            html += '<p id="chara3" title="' + charaId3 +'">' + chara3 + '</p>';
+            html += '<div class="eventCharacter">';
+            html += document.getElementById('characters').innerHTML;
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'battle\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'battle\',true)">この内容でイベント登録</p>';
+            }
+            editEvent.innerHTML = html;
+
             break;
         case 'tool':
+            html += '<p>【道具】</p>';
+            if (objFlg == false) {
+                //マップイベントのときの分岐（取得・使用）
+                //取得の場合　単に道具を取得して終わり
+                //使用の場合　道具を持ってるか判定（道具ウィンドウから選択）→okなら、マップ通り抜け設定をするか判定後、次のイベント。ngの場合、ヒントコメントを表示して後続イベントごと終了。
+
+                //ラジオボタンでバリューチェンジ（取得or使用)
+                
+                //取得の場合
+                //道具一覧から、取得する道具を選択する(DBから引っ張り出し)
+
+                //使用の場合
+                //所持道具判定を行う道具を選択する。
+                //マップ通りぬけ設定するかを選択する。
+                //ヒントコメントの入力
+
+                html += '';
+                html += '<p id="registEvent" onclick="registEventToObj(\'tool\')">この内容でイベント登録</p>';
+            } else {
+                //オブジェクトイベントのときの分岐
+                if (true) {
+                    //オブジェクトイベント：キャラクターのときの分岐（取得・使用）
+                    //取得の場合　単に道具を取得して終わり
+                    //使用の場合　道具を持ってるか判定（道具ウィンドウから選択）→okなら次のイベント、ngの場合、ヒントコメントを表示して後続イベントごと終了。
+
+                } else {
+                    //オブジェクトイベント：toolのときの分岐（取得・使用）
+                    //取得の場合　道具を取得して、対象のオブジェクトを描画リストから削除する（イベント終了後、際描画のタイミングオブジェクトが消える）
+                    //使用の場合　道具を持ってるか判定（道具ウィンドウから選択）→okなら次のイベント、ngの場合、ヒントコメントを表示して後続イベントごと終了。
+
+                }
+                html += '<p id="registEvent" onclick="registEventToObj(\'tool\',true)">この内容でイベント登録</p>';
+            }
+
+
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'tool\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'tool\',true)">この内容でイベント登録</p>';
+            }
             break;
     }
 }
 
-function setTransitionMap(value) {
+function setBattleCharacter(obj) {
+    //キャラ1~3の名前表示のpタグが対象。nameにidを入れると言うなんか変な感じになったけど、、しょうがない、、
+    obj.parentNode.parentNode.previousElementSibling.title = obj.id;
+    //表示キャラ名
+    obj.parentNode.parentNode.previousElementSibling.innerText = obj.alt;
+}
+
+function setTransitionMap(mapName, orgEvtName) {
     var transitionMapCanvas = document.getElementById('transitionMapCanvas');
     var transitionMapContext = transitionMapCanvas.getContext('2d');
     var transitionMapImage = document.getElementById('transitionMapImage');
     //遷移先マップをクリア    
     transitionMapContext.clearRect(0, 0, transitionMapCanvas.width, transitionMapCanvas.height);
     //選択したマップを表示（キャンバス表示用に使う、非表示画像）
-    for (i=0; i<maps.length; i++) {
-        if (maps[i].alt == value) {
-            transitionMapImage.src = maps[i].src;
-            break;
+    if (!currentMapTip.hasOwnProperty('events')) {
+        for (var j=0; j<maps.length; j++) {
+            if (maps[j].alt == mapName) {
+                transitionMapImage.src = maps[j].getAttribute('src');
+            }
+        }
+    } else {
+        var keys = Object.keys(currentMapTip.events);
+        for (var i=0; i<keys.length; i++) {
+            if (keys[i] == orgEvtName) {
+                for (var j=0; j<maps.length; j++) {
+                    if (currentMapTip.events[orgEvtName].transitionMap == mapName) {
+                        for (var j=0; j<maps.length; j++) {
+                            if (maps[j].alt == mapName) {
+                                transitionMapImage.src = maps[j].getAttribute('src');
+                            }
+                        }
+                    var transitionX = currentMapTip.events[orgEvtName].transitionX;
+                    var transitionY = currentMapTip.events[orgEvtName].transitionY;
+                    document.getElementById('transitionX').innerHTML = transitionX;
+                    document.getElementById('transitionY').innerHTML = transitionY;
+
+                    var directions = ['up','right','down','left'];
+                    var transitionDirection = currentMapTip.events[orgEvtName].transitionDirection;
+                    for (var i=0; i<directions.length; i++) {
+                        if (directions[i] == transitionDirection) {
+                            document.getElementById('transitionDirection').selectedIndex = i;   
+                        }
+                    }
+                    break;
+                } else {
+                    for (var j=0; j<maps.length; j++) {
+                        if (maps[j].alt == mapName) {
+                            transitionMapImage.src = maps[j].getAttribute('src');
+                        }
+                    }
+                    document.getElementById('transitionX').innerHTML = '';
+                    document.getElementById('transitionY').innerHTML = '';
+        
+                    document.getElementById('transitionDirection').selectedIndex = 0;   
+                }
+            }
         }
     }
+    }
+    
     //キャンバスの大きさを更新
     transitionMapCanvas.height = transitionMapImage.naturalHeight;
     transitionMapCanvas.width = transitionMapImage.naturalWidth;
-    //新しいマップを表示
+    //新しいマップを描画
     transitionMapContext.drawImage(transitionMapImage, 0, 0);
+}
 
-    document.getElementById('transitionX').innerHTML = '';
-    document.getElementById('transitionY').innerHTML = '';
+//イベント持ち、オブジェクト持ちのマップチップ上に、それらを表示する
+function drawEvtAndObj() {
+    for (var i=0; i<Object.keys(currrentMapObj).length; i++) {
+        for (var j=0; j<Object.keys(currrentMapObj[i]).length; j++) {
+            if (currrentMapObj[i][j].hasOwnProperty('object')) {
+                var objImgName;
+                var img;
+                if (currrentMapObj[i][j].object.hasOwnProperty('imgName')) {
+                    objImgName = currrentMapObj[i][j].object.imgName;
+                    img = document.getElementById(objImgName);
+                    currentMapContext.drawImage(img, j*mapLength ,i*mapLength - 8); // 立体的に見せるため、縦にちょっとずらす。
+                } else {
+                    //多分もうここにくることはない
+                    alert(i + ":" + j );
+                }
+            }
+            if (currrentMapObj[i][j].hasOwnProperty('events')) {
+                // パスをリセット
+                currentMapContext.beginPath () ;
+                // レクタングルの座標(50,50)とサイズ(75,50)を指定
+                currentMapContext.rect(j*mapLength ,i*mapLength , 10, 10);
+                // 塗りつぶしの色
+                currentMapContext.fillStyle = "yellow"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
+                if (currrentMapObj[i][j].hasOwnProperty('trigger')) currentMapContext.fillStyle = "red"; //イベントもトリガーも設定している場合は赤
+                //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
+                // 塗りつぶしを実行
+                currentMapContext.fill();
+                // 線の色
+                currentMapContext.strokeStyle = "purple" ;
+                // 線の太さ
+                currentMapContext.lineWidth =  1;
+                // 線を描画を実行
+                currentMapContext.stroke() ;
+            }
+        }
+    }
+}
+
+function drawGrid(){
+    for (var i=0; i<Object.keys(currrentMapObj).length; i++) {
+        for (var j=0; j<Object.keys(currrentMapObj[i]).length; j++) {
+                // パスをリセット
+                currentMapContext.beginPath () ;
+                // レクタングルの座標(50,50)とサイズ(75,50)を指定
+                currentMapContext.rect(j*mapLength ,i*mapLength , mapLength, mapLength);
+                // 塗りつぶしの色
+                //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
+                // 塗りつぶしを実行
+                // currentMapContext.fill();
+                // 線の色
+                currentMapContext.strokeStyle = "purple" ;
+                // 線の太さ
+                currentMapContext.lineWidth =  0.1;
+                // 線を描画を実行
+                currentMapContext.stroke() ;
+        }
+    }   
 }
 
 //遷移先マップのポジションを取得する
@@ -666,7 +1314,7 @@ function setPassProperty(mode) {
 //同時にイベント一覧も更新
 //param1 : イベント所持フラグ(new→初イベント)
 //param2 : イベントネーム
-function registEventToObj(evtName) {
+function registEventToObj(evtName, objFlg = false) {
     var res = confirm('この内容でイベントを登録しますか？');
     if (!res) {
         return;
@@ -674,70 +1322,248 @@ function registEventToObj(evtName) {
 
     var hasEventflg = false;
     //イベントチェック
-    if (currentMapTip.hasOwnProperty('events')) {
-        hasEventflg = true;
+    if (objFlg == false) {
+        if (currentMapTip.hasOwnProperty('events')) {
+            hasEventflg = true;
+        }
+    } else {
+        if (currentMapTip.hasOwnProperty('object') && currentMapTip.object.hasOwnProperty('events')) {
+            hasEventflg = true;
+        }
     }
 
+    var evtNameKey = getEventKey(evtName, objFlg);
     //イベントを登録する
     switch (evtName) {
         case 'talk':
             if (currentRegisteredEvent == '') {
-                var evtNameKey = getEventKey(evtName);
-                //イベント名のキーごとにオブジェクトを作成
-                currentMapTip.events[evtNameKey] = new Object();
-                //トークのコンテンツを格納
-                currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
+                //新規のイベントの場合
+                if (objFlg == false) {
+                    //イベント名のキーごとにオブジェクトを作成
+                    currentMapTip.events[evtNameKey] = new Object();
+                    //トークのコンテンツを格納
+                    currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.events[evtNameKey]['wipe'] = imgName;
+                    }
+                } else {
+                    //イベント名のキーごとにオブジェクトを作成
+                    //currentMapTip.object['events'] = new Object(); これいらないな
+                    currentMapTip.object.events[evtNameKey] = new Object();
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[evtNameKey].talkContent = document.getElementById('talk').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.object.events[evtNameKey]['wipe'] = imgName;
+                    }
+                }
             } else {
                 //既存のイベントの場合
-                currentMapTip.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+                    currentMapTip.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.events[currentRegisteredEvent]['wipe'] = imgName;
+                    }
+                } else {
+                    currentMapTip.object.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.object.events[currentRegisteredEvent]['wipe'] = imgName;
+                    }
+                }
             }
         break;
 
         case 'question':
             if (currentRegisteredEvent == '') {
-                var evtNameKey = getEventKey(evtName);
-                //イベント名のキーごとにオブジェクトを作成
-                currentMapTip.events[evtNameKey] = new Object(); 
-                //トークのコンテンツを格納
-                currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+                    //イベント名のキーごとにオブジェクトを作成
+                    currentMapTip.events[evtNameKey] = new Object(); 
+                    //トークのコンテンツを格納
+                    currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.events[evtNameKey]['wipe'] = imgName;
+                    }
+                } else {
+                    //イベント名のキーごとにオブジェクトを作成
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.object.events[evtNameKey]['wipe'] = imgName;
+                    }
+                }
+
             } else {
                 //既存のイベントの場合
-                currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
+                if (objFlg == false) {
+                    currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.events[currentRegisteredEvent]['wipe'] = imgName;
+                    }
+                } else {
+                    currentMapTip.object.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
+                    //ワイプを登録
+                    var selectedWipeImage = document.getElementById('selectedWipeImage');
+                    if (selectedWipeImage == null) {
+                        //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                        //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                    } else {
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        currentMapTip.object.events[currentRegisteredEvent]['wipe'] = imgName;
+                    }
+                }
             }
             
         break;
 
         case 'transition':
             if (currentRegisteredEvent == '') {
-                var evtNameKey = getEventKey(evtName);
-                //イベント名のキーごとにオブジェクトを作成
-                currentMapTip.events[evtNameKey] = new Object(); 
-                //トークのコンテンツを格納
-                currentMapTip.events[evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
-                //トークのコンテンツを格納
-                currentMapTip.events[evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
-                currentMapTip.events[evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
-                //トークのコンテンツを格納
-                currentMapTip.events[evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+                    //イベント名のキーごとにオブジェクトを作成
+                    currentMapTip.events[evtNameKey] = new Object(); 
+                    //トークのコンテンツを格納
+                    currentMapTip.events[evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    //トークのコンテンツを格納
+                    currentMapTip.events[evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.events[evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    //トークのコンテンツを格納
+                    currentMapTip.events[evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                } else {
+                    //イベント名のキーごとにオブジェクトを作成
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.object.events[evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                }
             } else {
-                //トークのコンテンツを格納
-                currentMapTip.events[currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
-                //トークのコンテンツを格納
-                currentMapTip.events[currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
-                currentMapTip.events[currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
-                //トークのコンテンツを格納
-                currentMapTip.events[currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                //既存のイベントの場合
+                if (objFlg == false) {
+                    //トークのコンテンツを格納
+                    currentMapTip.events[currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    //トークのコンテンツを格納
+                    currentMapTip.events[currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.events[currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    //トークのコンテンツを格納
+                    currentMapTip.events[currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                } else {
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.object.events[currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                }
             }
             
+        break;
+
+        case 'battle':
+            if (currentRegisteredEvent == '') {
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtNameKey].charaGroup = document.getElementById('charaGroup').value;
+                    currentMapTip.events[evtNameKey].isBoss = document.getElementById('isBoss').value;
+                    currentMapTip.events[evtNameKey]['chara1'] = document.getElementById('chara1').title;
+                    currentMapTip.events[evtNameKey]['chara2'] = document.getElementById('chara2').title;
+                    currentMapTip.events[evtNameKey]['chara3'] = document.getElementById('chara3').title;
+                } else {
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtNameKey].charaGroup = document.getElementById('charaGroup').value;
+                    currentMapTip.object.events[evtNameKey].isBoss = document.getElementById('isBoss').value;
+                    currentMapTip.object.events[evtNameKey]['chara1'] = document.getElementById('chara1').title;
+                    currentMapTip.object.events[evtNameKey]['chara2'] = document.getElementById('chara2').title;
+                    currentMapTip.object.events[evtNameKey]['chara3'] = document.getElementById('chara3').title;
+                }
+
+            } else {
+                //既存のイベントの場合
+                if (objFlg == false) {
+                    currentMapTip.events[currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
+                    currentMapTip.events[currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
+                    currentMapTip.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').title;
+                    currentMapTip.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').title;
+                    currentMapTip.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').title;
+                } else {
+                    currentMapTip.object.events[currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
+                    currentMapTip.object.events[currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').title;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').title;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').title;
+                }
+            }   
         break;
     }
     //マップオブジェクトに現在マップオブジェクトの変更を反映
     currrentMapObj[rowNum][colNum] = currentMapTip;
-    
+    //新規イベント登録後はイベント編集divを閉じる（選択していないのにdivが開いているのが気持ち悪いため）。
+    if (currentRegisteredEvent == '') editEvent.style.display = 'none';
+
     //イベント一覧を更新
     updateMapEventHTML();
 
-    var events = document.getElementsByClassName('registerdEvents');
+    if (objFlg == false) {
+        var events = document.getElementsByClassName('registerdEvents');
+    } else {
+        var events = document.getElementsByClassName('registerdEventsForObj');
+    }
     events = Array.from(events);
     events.forEach(function(event) {
         if (event.innerHTML == currentRegisteredEvent) {
@@ -745,15 +1571,23 @@ function registEventToObj(evtName) {
         }
     });
 
-    function getEventKey(evtName){
-        //新規イベントの場合
-        if (!hasEventflg) {
-            //イベントの配列用オブジェクト
-            currentMapTip.events = new Object();
+    //マップリロード
+    reloadEditMap();
+
+    function getEventKey(evtName, objFlg){
+        if (objFlg == false) {
+            //新規イベントの場合
+            if (!hasEventflg) {
+                //イベントの配列用オブジェクト
+                currentMapTip.events = new Object();
+            }
+        } else {
+            //新規イベントの場合
+            if (!hasEventflg) {
+                //イベントの配列用オブジェクト
+                currentMapTip.object.events = new Object();
+            }
         }
-        //現在マップチップのイベント数を数える
-        //var evtObj  = currentMapTip.events;
-        //var evtIndex = Object.keys(evtObj).length;
         //イベントのキーを作成
         var now = new Date();
         var Year = String(now.getFullYear());

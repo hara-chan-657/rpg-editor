@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>rpg-editor</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('/css/rpg-editor.css') }}">
     <script src="{{ asset('js/rpg-editor.js') }}"></script>
 </head>
 <body>
