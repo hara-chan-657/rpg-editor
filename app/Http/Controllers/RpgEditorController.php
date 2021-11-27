@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Controllers\CharacterController; //やむなくキャラクターコントローラをuse、、良いのかな
+//use App\Http\Controllers\CharacterController; //やむなくキャラクターコントローラをuse、、良いのかな
 
 /* resoureces/viewsにあるbladeを探しにいくよ！！！ */
 
@@ -34,9 +34,13 @@ class RpgEditorController extends Controller
         $characters = $charaCtlr->getCharacters($request->oldProjectName);
 
         //スキル取得
-        $skillCtlr = new skillController();
+        $skillCtlr = new SkillController();
         $skills = $skillCtlr->getSkills($request->oldProjectName);
         $specialSkills = $skillCtlr->getSpecialSkills($request->oldProjectName);
+
+        //ツール取得
+        $toolCtlr = new ToolController();
+        $tools = $toolCtlr->getTools($request->oldProjectName);
 
         //オブジェクト取得
         $excludes = array(
@@ -198,8 +202,34 @@ class RpgEditorController extends Controller
                 }
             }
         }
+        //サウンド取得
+        //$i = 0; //インデックス
+        $sounds = array();
+        //var_dump(scandir('../../rpg-player/public/projects'));
+        foreach(scandir('../../rpg-player/public/sounds') AS $soundTypeDir){
+            if (in_array($soundTypeDir, $excludes)) continue;
+            foreach(scandir('../../rpg-player/public/sounds/' . $soundTypeDir) AS $soundTypeSubDir){
+                if (in_array($soundTypeSubDir, $excludes)) continue;
+                foreach(scandir('../../rpg-player/public/sounds/' . $soundTypeDir . '/'. $soundTypeSubDir) AS $soundFile){
+                    if (in_array($soundFile, $excludes)) continue;
+                    $sounds[$soundTypeDir][$soundTypeSubDir][] = $soundFile;
+                }
+            }
+        }
         //var_dump($objects);       
-        return view('rpg-editor.rpg-editor', ['pngFiles'=>$pngFiles, 'project'=>$request->oldProjectName, 'characters'=>$characters, 'skills'=>$skills, 'specialSkills'=>$specialSkills, 'objects'=>$objects, 'wipes'=>$wipes]);
+        return view('rpg-editor.rpg-editor',
+                    [
+                        'pngFiles'=>$pngFiles,
+                        'project'=>$request->oldProjectName,
+                        'characters'=>$characters,
+                        'skills'=>$skills,
+                        'specialSkills'=>$specialSkills,
+                        'objects'=>$objects,
+                        'wipes'=>$wipes,
+                        'tools'=>$tools,
+                        'sounds'=>$sounds
+                    ]
+                );
     }
 
     //編集されたマップ情報をサーバに保存＆rpg-playerに同期しにいく

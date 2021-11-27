@@ -17,6 +17,7 @@
     @endcomponent
 
     <div id="mapContainer">
+        <button onclick="switchCanvasSize()">キャンバス大きさ変更</button>
         <div id="setStartProjectContainer">
         </div>
         <div id="editStartPositionContainer" style="display:none">
@@ -62,6 +63,15 @@
         @endforeach
     </div>
 
+    <!-- 主人公設定画面へ -->
+    <div id="editMainCharaContainer">
+        <form name="edit_mainChara" action="character/editMainCharacter" method="post">
+        {{ csrf_field() }}
+            <input type="hidden" name="project" value="{{$project}}">
+            <input type="submit" value="主人公編集">
+        </form>
+    </div>
+
     <!-- 技編集画面へ -->
     <div id="editSkillContainer">
         <form name="edit_skill" action="skill/editSkill" method="post">
@@ -99,6 +109,7 @@
 
     <!-- バトルイベント使用のキャラクターたち（hidden） -->
     <div id="characters" style="display:;">
+        <span>↓バトルイベントキャラ===</span>
         @foreach($characters as $character)
             <div class="eachCharaContainer">
                 <img src="{{$character->characterImagePath}}" alt="{{$character->characterName}}" onclick="setBattleCharacter(this)" id="{{$character->id}}">
@@ -307,7 +318,55 @@
         @endforeach
         </div>
     </div>
+
+    <span>↓ツール=====================================================================</span>
+
+    <!-- ツール設定用のコンテナ -->
+    <div id="tools" style="display:;">
+        <div id="toolContainer">
+            <table border="1">
+                <tr style="background: skyblue">
+                    <th>選択</th>
+                    <th>ID</th>
+                    <th>ツール名</th>
+                    <th>説明</th>
+                </tr>                
+                @foreach($tools as $tool)
+                    <tr>
+                        <th><button type="button" onclick="setToolInfo({{$tool->id}})" class="tools" value="{{$tool->id}}"></button></th>
+                        <th>{{$tool->id}}</th>
+                        <th>{{$tool->toolName}}</th>
+                        <th>{{$tool->description}}</th>
+                    </tr>
+                @endforeach
+            </table>
+        </div>
+    </div>
+
+    <span>↓サウンド=====================================================================</span>
+
+    <!-- サウンド設定用のコンテナ -->
+    <div id="sounds" style="display:;">
+        <div id="soundContainer">
+            @foreach($sounds as $key => $soundType)
+            <p style="background-color: red">{{$key}}</p>
+                @foreach($soundType as $key2 => $soundTypeSub)
+                <p style="background-color: orange">{{$key2}}</p>
+                    @foreach($soundTypeSub as $soundFile)
+                        <p>
+                            <button onclick="setSoundInfo('{{$key}}','{{$key2}}','{{$soundFile}}')">選択</button>
+                            <button onclick="sound('{{$soundFile}}')">再生</button>{{$soundFile}}
+                        </p>
+                        <audio id="{{$soundFile}}" preload="auto">
+                            <source src="../../rpg-player/public/sounds/{{$key}}/{{$key2}}/{{$soundFile}}" type="audio/mp3">
+                            <p>※お使いのブラウザはHTML5のaudio要素をサポートしていないので音は鳴りません。</p>
+                        </audio>
+                    @endforeach                  
+                @endforeach  
+            @endforeach
+        </div>
+    </div>
+
 <script src="{{ asset('/js/rpg-editor.js') }}"></script>
 </body>
-
 

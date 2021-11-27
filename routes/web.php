@@ -24,6 +24,12 @@ Route::post('getProjectData', 'RpgEditorController@getProjectData');
 Route::post('/rpg-editor/saveEditedMap', 'RpgEditorController@saveEditedMap');
 
 
+//主人公設定画面へ
+Route::post('/character/editMainCharacter', 'CharacterController@editMainCharacter');
+
+//主人公保存
+Route::post('/character/saveMainCharacter', 'CharacterController@saveMainCharacter');
+
 
 //キャラクター編集画面へ
 Route::post('/character/editCharacter', 'CharacterController@editCharacter');

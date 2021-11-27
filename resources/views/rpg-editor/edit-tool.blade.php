@@ -17,6 +17,7 @@
             <input type="submit" value="新規登録">
             <div><span>道具名</span><input type="text" name="toolName" id="" cols="30"></div>
             <div><span>説明</span><textarea name="description" id=""></textarea></div>
+            <div><span>↓くらいの長さが最高<br></span><textarea name="dummy" id="">うまいんだよなああああ。たまに食べたくなるんだよなあ。ああああああああああああああああああああああああ。</textarea></div>
         </form>
         </div>
     </div>

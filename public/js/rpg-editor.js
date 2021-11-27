@@ -41,6 +41,7 @@ var settingEvents = [
     "transition",
     "battle",
     "tool",
+    "effect",
 ]
 //セット可能オブジェクト
 var settingObjects = [
@@ -600,7 +601,8 @@ function updateMapEventHTML() {
         mapObject.innerHTML += '<p id="deleteObject" onclick="deleteObject()">オブジェクトを削除する※注意</p>';
         if (objName == 'tool') {
             //拾いイベントだけ
-            mapObject.innerHTML += '<p>拾いイベントのみです</p>';
+            mapObject.innerHTML += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
+            //html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>';
         } else if (objName == 'character') {
             mapObject.innerHTML += '<p>トリガはAボタン</p>';
             //mapObject.innerHTML += '<p>クリーチャーを選択</p>';
@@ -621,10 +623,13 @@ function updateMapEventHTML() {
             mapObject.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\', true)">↓</p>';
         } else {
         }
+        editObjectContainer.style.display = 'none';
+        objLists.style.display = 'none';
     } else {
         mapObject.innerHTML = '<p>オブジェクトはありません</p>';
         mapObject.innerHTML += '<p id="addObject" onclick="addObject()">オブジェクトを追加</p>';
         editObjectContainer.style.display = 'none'; //デフォルトは必ず非表示
+        //objLists.style.display = 'none';
     }
 
     reloadEditMap();
@@ -659,6 +664,7 @@ function addObject(objFlg = false) {
         objListHtml += '<p class="object" onclick="setObject(\'' + settingObjects[i] + '\')">' + settingObjects[i] +'</p>';
     }
     objLists.innerHTML = objListHtml;
+    objLists.style.display = 'inline-block';
 }
 
 //オブジェクトをマップチップにセットする
@@ -671,11 +677,16 @@ function setObject(objectName) {
         html += '<p>オブジェクト名：' + objectName + '</p>';
         html += '<span>選択中のオブジェクト</span><img id="selectedObjImage" src=""></img>';
         if (objectName == 'tool') {
+            //currentMapTip.object.objName  ここで、選択中のマップチップに登録されているツールオブジェクトの、どうぐIDを取得。
             html += '<p>ツールを選択</p>';
             html += '<div class="imagesContainer">';
             var objTools = document.getElementById('toolObjContainer');
             html += objTools.innerHTML;
+            //html += '<textarea id="tool"></textarea>'; //ここで、DBに登録のどうぐ一覧を取得オブジェクトを登録
             html += '</div>'
+            html += '<div id="selectToolContainer">';
+            html += document.getElementById('toolContainer').innerHTML;
+            html += '</div>';
             //拾いイベントだけ
         } else if (objectName == 'character') {
             //html += '<p>トリガはAボタン</p>';
@@ -690,6 +701,20 @@ function setObject(objectName) {
         //オブジェクトセットの際は、イベント編集ウィンドウをお借りする
         editEvent.innerHTML = html;
         editEvent.style.display = 'inline-block';
+
+        //ちょっとスマートではないけど
+        if (objectName == 'tool') {
+            var tableElement = document.getElementById('selectToolContainer');
+            var toolsElement = tableElement.getElementsByClassName('tools');
+            //var toolsElement = tableElement.tools;
+            var tools = Array.from(toolsElement);
+            var cnt = 0;
+            tools.forEach(function(tool) {
+                //最初は絶対「設定」のみ、setToolInfoで変更する（rpg-editor.bladeにべたがき）
+                toolsElement[cnt].innerText= '設定';
+                cnt++;
+            });
+        }
 }
 
 //選択したオブジェクトを、選択中オブジェクトに表示する
@@ -709,14 +734,38 @@ function selectWipeImage(evt) {
 }
 
 function registObject(objectName) {
-    //オブジェクトをマップちっぷに登録
-    currentMapTip.object = new Object(); 
-    currentMapTip.object.objName = objectName;
     var fullSrc = decodeURI(document.getElementById('selectedObjImage').src);
+    let file_type = fullSrc.split('.').pop();
+    if (file_type != "png") {
+        alert("オブジェクト画像を選択してください");
+        return;
+    }
     var imgName = fullSrc.split("/").reverse()[0]
 
+    var toolId = null;
+    if (objectName == 'tool') {
+        //ツールオブジェクトの場合
+        toolId = document.getElementById('selectedTool');
+        if (toolId == null) {
+            alert("ツールを設定してください。");
+            return;
+        }
+    } else {
+        //キャラオブジェクトの場合
+
+    }
+
+    //問題なかったらnew Object()する
+    //オブジェクトをマップちっぷに登録
+    currentMapTip.object = new Object();
+    if (objectName == 'tool') {
+        currentMapTip.object.toolId = toolId.value;
+    }
+
+    currentMapTip.object.objName = objectName;
     currentMapTip.object.imgName = imgName;
     currentMapTip.object.trigger = 'Aボタン'; //オブジェクトのトリガはAボタン固定なので、意味あるかわからないが、、
+
     currrentMapObj[rowNum][colNum] = currentMapTip;
 
     //イベント編集ウィンドウ、オブジェクト追加ウィンドウを閉じて、イベントコンテナ更新
@@ -749,6 +798,7 @@ function saveTriggerToObj() {
 //現在マップチップのイベントを表示
 function showMapTipEvents(objFlg = false) {
     var html = '<p>設定済みイベント一覧</p>';
+    html += '<p style="color:red">※Transitionは最後に設定してください</p>';
     html += '<ul>';
     var evtIndex = 0;
     if (objFlg == false) {
@@ -852,7 +902,7 @@ function addEvent(objFlg = false) {
 }
 
 //選択中のイベントを削除する
-function deleteEvent(evt) {
+function deleteEvent(objFlg = false) {
 
     if (currentRegisteredEvent == '') {
         alert('削除対象のイベントが選択されていません!');
@@ -864,13 +914,39 @@ function deleteEvent(evt) {
         //対象のイベントを取得（ただ削除されるだけ、イベント名の先頭のインデックス番号は変更しない）
         //var delTarget = evt.target.innerHTML;
         //登録ずみイベントのキーを取得
-        var evtKeys = Object.keys(currentMapTip.events)
-        //一致するイベントを削除
-        for (var i=0; i<evtKeys.length; i++) {
-            if (evtKeys[i] == currentRegisteredEvent) {
-                delete currentMapTip.events[currentRegisteredEvent];
-                currentRegisteredEvent = '';
-                break;
+        if (objFlg == false) {
+            var evtKeys = Object.keys(currentMapTip.events)
+            //一致するイベントを削除
+            for (var i=0; i<evtKeys.length; i++) {
+                if (evtKeys[i] == currentRegisteredEvent) {
+                    delete currentMapTip.events[currentRegisteredEvent];
+                    currentRegisteredEvent = '';
+
+                    //イベントが0個になったら、eventsプロパティごと削除（エディタ画面にて、イベント0なのに登録はされているとみなされるから）
+                    evtKeys = Object.keys(currentMapTip.events)
+                    if(evtKeys.length == 0) {
+                        delete currentMapTip['events'];
+                    }
+
+                    break;
+                }
+            }
+        } else {
+            var evtKeys = Object.keys(currentMapTip.object.events)
+            //一致するイベントを削除
+            for (var i=0; i<evtKeys.length; i++) {
+                if (evtKeys[i] == currentRegisteredEvent) {
+                    delete currentMapTip.object.events[currentRegisteredEvent];
+                    currentRegisteredEvent = '';
+
+                    //イベントが0個になったら、eventsプロパティごと削除（エディタ画面にて、イベント0なのに登録はされているとみなされるから）
+                    evtKeys = Object.keys(currentMapTip.object.events)
+                    if(evtKeys.length == 0) {
+                        delete currentMapTip.object['events'];
+                    }
+
+                    break;
+                }
             }
         }
         //イベント編集ウィンドウを閉じる
@@ -923,6 +999,7 @@ function setEvent(eventName, objFlg = false) {
             }
             html += '<p>【会話】</p>';
             html += '<p>ワイプを選択（なしでもOK）</p>';
+            html += '<p><button onclick="resetWipe()">ワイプ削除</button></p>';
             html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
             html += '<div class="imagesContainer">';
             html += document.getElementById('wipeContainer').innerHTML;
@@ -956,6 +1033,7 @@ function setEvent(eventName, objFlg = false) {
             }
             html += '<p>【質問】</p>';
             html += '<p>ワイプを選択（なしでもOK）</p>';
+            html += '<p><button onclick="resetWipe()">ワイプ削除</button></p>';
             html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
             html += '<div class="imagesContainer">';
             html += document.getElementById('wipeContainer').innerHTML;
@@ -1111,47 +1189,481 @@ function setEvent(eventName, objFlg = false) {
             break;
         case 'tool':
             html += '<p>【道具】</p>';
+            var toolEventType = "";  
             if (objFlg == false) {
+                if (registeredFlg) {
+                    //ツールのイベントタイプ（ひろいor使用）を取得
+                    toolEventType = currentMapTip.events[orgEvtName].type;
+                }
                 //マップイベントのときの分岐（取得・使用）
                 //取得の場合　単に道具を取得して終わり
                 //使用の場合　道具を持ってるか判定（道具ウィンドウから選択）→okなら、マップ通り抜け設定をするか判定後、次のイベント。ngの場合、ヒントコメントを表示して後続イベントごと終了。
 
                 //ラジオボタンでバリューチェンジ（取得or使用)
-                
-                //取得の場合
-                //道具一覧から、取得する道具を選択する(DBから引っ張り出し)
-
-                //使用の場合
-                //所持道具判定を行う道具を選択する。
-                //マップ通りぬけ設定するかを選択する。
-                //ヒントコメントの入力
-
-                html += '';
+                html += '<div>';
+                html += '<input type="radio" name="changeToolEventRadio" onChange="setToolEventContainer(\'get\')" value="getTool" ';
+                if(toolEventType=="get") html += 'checked';
+                html += '>もらいイベント';
+                html += '<input type="radio" name="changeToolEventRadio" onChange="setToolEventContainer(\'use\')" value="useTool" ';
+                if(toolEventType=="use") html += 'checked';
+                html += '>使用イベント';
+                html += '</div>';
+                html += '<div id="ToolEventContainer"></div>';
                 html += '<p id="registEvent" onclick="registEventToObj(\'tool\')">この内容でイベント登録</p>';
             } else {
-                //オブジェクトイベントのときの分岐
-                if (true) {
-                    //オブジェクトイベント：キャラクターのときの分岐（取得・使用）
-                    //取得の場合　単に道具を取得して終わり
-                    //使用の場合　道具を持ってるか判定（道具ウィンドウから選択）→okなら次のイベント、ngの場合、ヒントコメントを表示して後続イベントごと終了。
-
-                } else {
-                    //オブジェクトイベント：toolのときの分岐（取得・使用）
-                    //取得の場合　道具を取得して、対象のオブジェクトを描画リストから削除する（イベント終了後、際描画のタイミングオブジェクトが消える）
-                    //使用の場合　道具を持ってるか判定（道具ウィンドウから選択）→okなら次のイベント、ngの場合、ヒントコメントを表示して後続イベントごと終了。
-
+                if (registeredFlg) {
+                    //ツールのイベントタイプ（ひろいor使用）を取得
+                    toolEventType = currentMapTip.object.events[orgEvtName].type;
                 }
+                //オブジェクトイベントのときの分岐
+                //ラジオボタンでバリューチェンジ（取得or使用)
+                html += '<div>';
+                html += '<input type="radio" name="changeToolEventRadio" onChange="setToolEventContainer(\'get\')" value="getTool" ';
+                if(toolEventType=="get") html += 'checked';
+                html += '>もらいイベント';
+                html += '<input type="radio" name="changeToolEventRadio" onChange="setToolEventContainer(\'use\')" value="useTool" ';
+                if(toolEventType=="use") html += 'checked';
+                html += '>使用イベント';
+                html += '</div>';
+                html += '<div id="ToolEventContainer"></div>';
                 html += '<p id="registEvent" onclick="registEventToObj(\'tool\',true)">この内容でイベント登録</p>';
             }
 
 
-            if (objFlg == false) {
-                html += '<p id="registEvent" onclick="registEventToObj(\'tool\')">この内容でイベント登録</p>';
-            } else {
-                html += '<p id="registEvent" onclick="registEventToObj(\'tool\',true)">この内容でイベント登録</p>';
+            // if (objFlg == false) {
+            //     html += '<p id="registEvent" onclick="registEventToObj(\'tool\')">この内容でイベント登録</p>';
+            // } else {
+            //     html += '<p id="registEvent" onclick="registEventToObj(\'tool\',true)">この内容でイベント登録</p>';
+            // }
+            editEvent.innerHTML = html;
+            if (toolEventType!="") {
+                //わかりづらいけど、既存イベントの場合
+                setToolEventContainer(toolEventType, true, orgEvtName, objFlg);
             }
             break;
+
+        case 'effect':
+            var effectTypes = ['shake', 'reaction', 'animation'];
+            html += '<p>【効果】</p>';
+            var effectType = "";  
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    //エフェクトのタイプを取得
+                    effectType = currentMapTip.events[orgEvtName].type;
+                }
+                //ラジオボタンでバリューチェンジ（取得or使用)
+                html += '<div>';
+                for (var i=0; i<effectTypes.length; i++) {
+                    html += '<input type="radio" name="changeEffectEventRadio" onChange="setEffectEventContainer(\'' + effectTypes[i] + '\')" value="" ';
+                    if(effectType==effectTypes[i]) html += 'checked';
+                    html += '>' + effectTypes[i];                    
+                }
+                html += '</div>';
+                html += '<div id="effectEventContainer">';
+                //既存の設定があれば、ここで表示
+                if (registeredFlg) {
+                    //エフェクトのタイプを取得
+                    switch(effectType){
+                        case 'shake':
+                            html += '<div id="selectEffectContainer">';
+                            html += '<p>※画面揺れの場合、揺れタイプと、音を設定</p>';
+                            html += getShakeTypeLists();
+                            html += getSoundLists();
+                            html += '</div>';
+                        break;
+                        case 'reaction':
+                            html += '<div id="selectEffectContainer">';
+                            html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
+                            html += getSoundLists();
+                            html += getReactionLists();
+                            html += '</div>';
+                        break;
+                        case 'animation':
+                        break;
+                    }
+                }
+                html += '</div>';
+                html += '<p id="registEvent" onclick="registEventToObj(\'effect\')">この内容でイベント登録</p>';
+            } else {
+                if (registeredFlg) {
+                    //エフェクトのタイプを取得
+                    effectType = currentMapTip.object.events[orgEvtName].type;
+                }
+                //ラジオボタンでバリューチェンジ（取得or使用)
+                html += '<div>';
+                for (var i=0; i<effectTypes.length; i++) {
+                    html += '<input type="radio" name="changeEffectEventRadio" onChange="setEffectEventContainer(\'' + effectTypes[i] + '\')" value="" ';
+                    if(effectType==effectTypes[i]) html += 'checked';
+                    html += '>' + effectTypes[i];                    
+                }
+                html += '</div>';
+                html += '<div id="effectEventContainer">';
+                //既存の設定があれば、ここで表示
+                if (registeredFlg) {
+                    //エフェクトのタイプを取得
+                    switch(effectType){
+                        case 'shake':
+                            html += '<div id="selectEffectContainer">';
+                            html += '<p>※面揺れの場合、揺れタイプと、音を設定</p>';
+                            html += getShakeTypeLists();
+                            html += getSoundLists();
+                            html += '</div>';
+                        break;
+                        case 'reaction':
+                            html += '<div id="selectEffectContainer">';
+                            html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
+                            html += getSoundLists();
+                            html += getReactionLists();
+                            html += '</div>';
+                        break;
+                        case 'animation':
+                        break;
+                    }
+                }
+                html += '</div>';
+                html += '<p id="registEvent" onclick="registEventToObj(\'effect\',true)">この内容でイベント登録</p>';
+            }
+
+            //htmlを反映
+            editEvent.innerHTML = html;
+
+            //既存の設定があれば、ここで表示（本当は↑htmlを反映の前にやりたかったけど、しょうがなくここで）
+            if (registeredFlg) {
+                if (objFlg == false) {
+                    //エフェクトのタイプを取得
+                    switch(effectType){
+                        case 'shake':
+                            document.getElementById("selectedSound").innerText = currentMapTip.events[orgEvtName].sound;
+                            document.getElementById("selectedShakeType").innerText = currentMapTip.events[orgEvtName].shakeType;
+                            currentEffectType = 'shake';
+                        break;
+                        case 'reaction':
+                            document.getElementById("selectedSound").innerText = currentMapTip.events[orgEvtName].sound;
+                            document.getElementById("selectedReaction").innerText = currentMapTip.events[orgEvtName].reactType;
+                            currentEffectType = 'reaction';
+                        break;
+                        case 'animation':
+                        break;
+                    }
+                } else {
+                    //エフェクトのタイプを取得
+                    switch(effectType){
+                        case 'shake':
+                            document.getElementById("selectedSound").innerText = currentMapTip.object.events[orgEvtName].sound;
+                            document.getElementById("selectedShakeType").innerText = currentMapTip.object.events[orgEvtName].shakeType;
+                            currentEffectType = 'shake';
+                        break;
+                        case 'reaction':
+                            document.getElementById("selectedSound").innerText = currentMapTip.object.events[orgEvtName].sound;
+                            document.getElementById("selectedReaction").innerText = currentMapTip.object.events[orgEvtName].reactType;
+                            currentEffectType = 'reaction';
+                        break;
+                        case 'animation':
+                        break;
+                    }
+                }
+            }
+            break;
+
+        case '拾いイベント（固定）':
+            html += '<p>【拾いイベント（固定）】</p>';
+            var imgName = currentMapTip.object.imgName;
+            var img = document.getElementById(imgName);
+            //var src = document.getElementById(currentMapTip.object.imgName)
+            html += '<span>選択中のオブジェクト</span><img id="selectedObjImage" src="' + decodeURI(img.src) +'"></img>';
+            html += '<p>ツールを選択</p>';
+            html += '<div class="imagesContainer">';
+            var objTools = document.getElementById('toolObjContainer');
+            html += objTools.innerHTML;
+            html += '</div>';
+            html += '<div id="selectToolContainer">';
+            html += '<form>';
+            html += document.getElementById('toolContainer').innerHTML;
+            html += '</div>';
+            html += '</form>';
+            html += '<p id="registEvent" onclick="registObject(\'tool\')">この内容でイベント登録</p>';
+            //html += '<p id="registEvent" onclick="registEventToObj(\'拾いイベント（固定）\',true)">ここに来たよ</p>';
+            editEvent.innerHTML = html;
+
+            var tableElement = document.getElementById('selectToolContainer');
+            var toolsElement = tableElement.getElementsByClassName('tools');
+            //var toolsElement = tableElement.tools;
+            var tools = Array.from(toolsElement);
+            var cnt = 0;
+            var toolId = currentMapTip.object.toolId;
+            tools.forEach(function(tool) {
+                if (tool.value == toolId) {
+                    toolsElement[cnt].innerHTML= '設定中のツール<input type="hidden" id="selectedTool" value="'+toolId+'"></input>'; //すげー不細工だけど
+                } else {
+                    toolsElement[cnt].innerHTML= '設定';
+                }
+                cnt++;
+            });
+            break;
     }
+}
+
+//選択中ワイプ画像をリセット
+function resetWipe() {
+    document.getElementById('selectedWipeImage').src = '';
+}
+
+var currentEffectType = '';
+function setEffectEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=false) {
+    if(!exsistEvtFlg) {
+        var res = confirm('入力中の内容は消えてしまいます。よろしいですか？');
+        if(!res) return;
+    }
+
+    //typeのhtmlを作成
+    var html = '';
+    var effectEventContainer = document.getElementById('effectEventContainer');
+
+    switch (type) {
+        //画面揺れ
+        case 'shake':
+            html += '<div id="selectEffectContainer">';
+            html += '<p>※画面揺れの場合、揺れタイプと、音を設定</p>';
+            html += getShakeTypeLists();
+            html += getSoundLists();
+            html += '</div>';
+            effectEventContainer.innerHTML = html;
+            effectEventContainer.style.display = 'inline-block';
+        break;
+
+        //リアクション
+        case 'reaction':
+            html += '<div id="selectEffectContainer">';
+            html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
+            html += getSoundLists();
+            html += getReactionLists();
+            html += '</div>';
+            effectEventContainer.innerHTML = html;
+            effectEventContainer.style.display = 'inline-block';
+        break;
+
+        //アニメーション
+        case 'animation':
+
+        break;
+    }
+
+    currentEffectType = type;
+}
+
+
+//rpg-playerの、public/sounds以下の音源を取得
+function getSoundLists() {
+    var html = "";
+    html =  '<p id="selectedSound" style="color: blue"></p>';
+    html += '<div id="soundLists">';
+    html += document.getElementById("soundContainer").innerHTML;
+    html += '</div>';
+    return html;
+}
+
+//揺れタイプの一覧を返却
+function getShakeTypeLists() {
+    var html = "";
+    html =  '<p id="selectedShakeType" style="color: blue"></p>';
+    html += '<div id="shakeTypeLists">';
+    html += '<ul>';
+    html += '<li onclick="setShakeTypeInfo(\'v\')">縦揺れ</li>';
+    html += '<li onclick="setShakeTypeInfo(\'h\')">横揺れ</li>';
+    html += '</ul>';
+    html += '</div>';
+    return html;
+}
+
+//リアクションの一覧を返却
+function getReactionLists() {
+    var html = "";
+    html =  '<p id="selectedReaction" style="color: blue"></p>';
+    html += '<div id="reactionLists">';
+    html += '<ul>';
+    html += '<li onclick="setReactionInfo(\'びっくり\')">びっくり</li>';
+    html += '<li onclick="setReactionInfo(\'ハート\')">ハート</li>';
+    html += '<li onclick="setReactionInfo(\'いかり\')">いかり</li>';
+    html += '<li onclick="setReactionInfo(\'汗\')">汗</li>';
+    html += '</ul>';
+    html += '</div>';
+    return html;   
+}
+
+
+//サウンド情報をセット
+function setSoundInfo(type, sub, file) {
+    document.getElementById("selectedSound").innerText = type + '/' + sub + '/' + file;
+}
+
+//揺れタイプ情報をセット
+function setShakeTypeInfo(type) {
+    document.getElementById("selectedShakeType").innerText = type;
+}
+
+//リアクション情報をセット
+function setReactionInfo(type) {
+    document.getElementById("selectedReaction").innerText = type;
+}
+
+function sound(soundId) {
+    document.getElementById(soundId).currentTime = 0;
+    document.getElementById(soundId).play();
+}
+
+
+var toolEventType = '';
+//ツールイベント設定コンテナを表示する
+//引数：ツールイベントタイプ, 既存イベントフラグ（既存ならtrue）, イベントキー（既存の場合に使用、ちょっと無理やりな実装）, オブジェクトフラグ（既存の場合に使用、同じくちょっと無理やり）
+function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=false) {
+    if(!exsistEvtFlg) {
+        var res = confirm('入力中の内容は消えてしまいます。よろしいですか？');
+        if(!res) return;
+    }
+
+    //typeのhtmlを作成
+    var html = '';
+    var ToolEventContainer = document.getElementById('ToolEventContainer');
+
+    switch (type) {
+        //getの場合、以下をhtmlにセット
+        //道具一覧
+        case 'get':
+            html += '<div id="selectToolContainer">';
+            html += document.getElementById('toolContainer').innerHTML;
+            html += '</div>';
+            ToolEventContainer.innerHTML = html;
+            ToolEventContainer.style.display = 'inline-block';
+
+            var toolId = "";
+            if (exsistEvtFlg) {
+                if (!objFlg) {
+                    toolId = currentMapTip.events[evtNameKey].toolId;
+                } else {
+                    toolId = currentMapTip.object.events[evtNameKey].toolId;
+                }
+            }
+
+            //ちょっとスマートではないけど
+            var tableElement = document.getElementById('selectToolContainer');
+            var toolsElement = tableElement.getElementsByClassName('tools');
+            //var toolsElement = tableElement.tools;
+            var tools = Array.from(toolsElement);
+            var cnt = 0;
+            if (exsistEvtFlg) {
+                tools.forEach(function(tool) {
+                    if (tool.value == toolId) {
+                        toolsElement[cnt].innerHTML= '設定中のツール<input type="hidden" id="selectedTool" value="'+toolId+'"></input>';
+                    } else {
+                        toolsElement[cnt].innerHTML= '設定';
+                    }
+                    cnt++;
+                });
+            } else {
+                tools.forEach(function(tool) {
+                    //最初は絶対「設定」のみ、setToolInfoで変更する（rpg-editor.bladeにべたがき）
+                    toolsElement[cnt].innerText= '設定';
+                    cnt++;
+                });
+            }
+        break;
+
+        case 'use':
+        //useの場合、以下をhtmlにセット
+        //道具一覧、持っていた時のセリフ（ワイプ込）、持っていない時のセリフ（ワイプ込）、使用後削除フラグ、使用後通り抜けフラグ
+            var toolId = "";
+            var OKtalkContent = "";
+            var NGtalkContent = "";
+            var delToolFlg = "";
+            var wipeSrc = "";
+            if (exsistEvtFlg) {
+                if (!objFlg) {
+                    toolId = currentMapTip.events[evtNameKey].toolId;
+                    OKtalkContent = currentMapTip.events[evtNameKey].OKtalkContent;
+                    NGtalkContent = currentMapTip.events[evtNameKey].NGtalkContent;
+                    delToolFlg = currentMapTip.events[evtNameKey].delToolFlg;
+                    if (currentMapTip.events[evtNameKey].hasOwnProperty('wipe')) {
+                        var wipe = currentMapTip.events[evtNameKey].wipe;
+                        wipeSrc = decodeURI(document.getElementById(currentMapTip.events[evtNameKey].wipe).src);
+                    }
+                } else {
+                    toolId = currentMapTip.object.events[evtNameKey].toolId;
+                    OKtalkContent = currentMapTip.object.events[evtNameKey].OKtalkContent;
+                    NGtalkContent = currentMapTip.object.events[evtNameKey].NGtalkContent;
+                    delToolFlg = currentMapTip.object.events[evtNameKey].delToolFlg;
+                    if (currentMapTip.object.events[evtNameKey].hasOwnProperty('wipe')) {
+                        var wipe = currentMapTip.object.events[evtNameKey].wipe;
+                        wipeSrc = decodeURI(document.getElementById(currentMapTip.object.events[evtNameKey].wipe).src);
+                    }
+                }
+
+            }
+
+            html += '※トリガー進入の際は、一歩戻ることに注意！';
+            html += '<div id="selectToolContainer">';
+            html += document.getElementById('toolContainer').innerHTML;
+            html += '</div>';
+            html += '<textarea id="OKtalkContent" placeholder="OKの場合" >'+OKtalkContent+'</textarea>';
+            html += '<textarea id="NGtalkContent" placeholder="NGの場合" >'+NGtalkContent+'</textarea>';
+            if (delToolFlg=="" || delToolFlg==0) {
+                html += '<select id="delToolFlg" onChange=""><option value="0" checked>使用後に削除しない</option><option value="1">使用後に削除する</option></select>';
+            } else {
+                html += '<select id="delToolFlg" onChange=""><option value="0">使用後に削除しない</option><option value="1" selected>使用後に削除する</option></select>';
+            }
+            //var wipeSrc = '';
+            html += '<p>ワイプを選択（なしでもOK）</p>';
+            html += '<p><button onclick="resetWipe()">ワイプ削除</button></p>';
+            html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
+            html += '<div class="imagesContainer">';
+            html += document.getElementById('wipeContainer').innerHTML;
+            html += '</div>';
+            ToolEventContainer.innerHTML = html;
+            ToolEventContainer.style.display = 'inline-block';
+
+            //ちょっとスマートではないけど
+            var tableElement = document.getElementById('selectToolContainer');
+            var toolsElement = tableElement.getElementsByClassName('tools');
+            //var toolsElement = tableElement.tools;
+            var tools = Array.from(toolsElement);
+            var cnt = 0;
+            if (exsistEvtFlg) {
+                tools.forEach(function(tool) {
+                    if (tool.value == toolId) {
+                        toolsElement[cnt].innerHTML= '設定中のツール<input type="hidden" id="selectedTool" value="'+toolId+'"></input>';
+                    } else {
+                        toolsElement[cnt].innerHTML= '設定';
+                    }
+                    cnt++;
+                });
+            } else {
+                tools.forEach(function(tool) {
+                    //最初は絶対「設定」のみ、setToolInfoで変更する（rpg-editor.bladeにべたがき）
+                    toolsElement[cnt].innerText= '設定';
+                    cnt++;
+                });
+            }
+        break;
+    }
+
+    toolEventType = type;
+
+}
+
+function setToolInfo(toolId) {
+    //currentMapTip.object.toolId = toolId;
+    var tableElement = document.getElementById('selectToolContainer');
+    var toolsElement = tableElement.getElementsByClassName('tools');
+    //var toolsElement = tableElement.tools;
+    var tools = Array.from(toolsElement);
+    var cnt = 0;
+    tools.forEach(function(tool) {
+        if (tool.value == toolId) {
+            toolsElement[cnt].innerHTML= '設定中のツール<input type="hidden" id="selectedTool" value="'+toolId+'"></input>'; //すげー不細工だけど
+        } else {
+            toolsElement[cnt].innerHTML= '設定';
+        }
+        cnt++;
+    });
 }
 
 function setBattleCharacter(obj) {
@@ -1169,49 +1681,55 @@ function setTransitionMap(mapName, orgEvtName) {
     transitionMapContext.clearRect(0, 0, transitionMapCanvas.width, transitionMapCanvas.height);
     //選択したマップを表示（キャンバス表示用に使う、非表示画像）
     if (!currentMapTip.hasOwnProperty('events')) {
+    //イベントを持っていなかったら
         for (var j=0; j<maps.length; j++) {
             if (maps[j].alt == mapName) {
                 transitionMapImage.src = maps[j].getAttribute('src');
             }
         }
     } else {
+    //イベントを持っていたら
         var keys = Object.keys(currentMapTip.events);
         for (var i=0; i<keys.length; i++) {
             if (keys[i] == orgEvtName) {
+            //既存の遷移イベントと一致したら
                 for (var j=0; j<maps.length; j++) {
                     if (currentMapTip.events[orgEvtName].transitionMap == mapName) {
-                        for (var j=0; j<maps.length; j++) {
-                            if (maps[j].alt == mapName) {
-                                transitionMapImage.src = maps[j].getAttribute('src');
+                    //既存の遷移先イベントのマップと一致したら
+                    //既存の遷移先データをセット
+                        for (var k=0; k<maps.length; k++) {
+                            if (maps[k].alt == mapName) {
+                                transitionMapImage.src = maps[k].getAttribute('src');
                             }
                         }
-                    var transitionX = currentMapTip.events[orgEvtName].transitionX;
-                    var transitionY = currentMapTip.events[orgEvtName].transitionY;
-                    document.getElementById('transitionX').innerHTML = transitionX;
-                    document.getElementById('transitionY').innerHTML = transitionY;
+                        var transitionX = currentMapTip.events[orgEvtName].transitionX;
+                        var transitionY = currentMapTip.events[orgEvtName].transitionY;
+                        document.getElementById('transitionX').innerHTML = transitionX;
+                        document.getElementById('transitionY').innerHTML = transitionY;
 
-                    var directions = ['up','right','down','left'];
-                    var transitionDirection = currentMapTip.events[orgEvtName].transitionDirection;
-                    for (var i=0; i<directions.length; i++) {
-                        if (directions[i] == transitionDirection) {
-                            document.getElementById('transitionDirection').selectedIndex = i;   
+                        var directions = ['up','right','down','left'];
+                        var transitionDirection = currentMapTip.events[orgEvtName].transitionDirection;
+                        for (var l=0; l<directions.length; l++) {
+                            if (directions[l] == transitionDirection) {
+                                document.getElementById('transitionDirection').selectedIndex = l;   
+                            }
                         }
                     }
-                    break;
-                } else {
-                    for (var j=0; j<maps.length; j++) {
-                        if (maps[j].alt == mapName) {
-                            transitionMapImage.src = maps[j].getAttribute('src');
-                        }
-                    }
-                    document.getElementById('transitionX').innerHTML = '';
-                    document.getElementById('transitionY').innerHTML = '';
-        
-                    document.getElementById('transitionDirection').selectedIndex = 0;   
                 }
+            //break;
+            } else {
+            //既存の遷移イベントと一致しない場合、
+                for (var j=0; j<maps.length; j++) {
+                    if (maps[j].alt == mapName) {
+                        transitionMapImage.src = maps[j].getAttribute('src');
+                    }
+                }
+                document.getElementById('transitionX').innerHTML = '';
+                document.getElementById('transitionY').innerHTML = '';
+        
+                document.getElementById('transitionDirection').selectedIndex = 0;   
             }
         }
-    }
     }
     
     //キャンバスの大きさを更新
@@ -1231,7 +1749,8 @@ function drawEvtAndObj() {
                 if (currrentMapObj[i][j].object.hasOwnProperty('imgName')) {
                     objImgName = currrentMapObj[i][j].object.imgName;
                     img = document.getElementById(objImgName);
-                    currentMapContext.drawImage(img, j*mapLength ,i*mapLength - 8); // 立体的に見せるため、縦にちょっとずらす。
+                    //currentMapContext.drawImage(img, j*mapLength ,i*mapLength - 8); // 立体的に見せるため、縦にちょっとずらす。
+                    currentMapContext.drawImage(img, j*mapLength ,i*mapLength); // やっぱ立体的に見せない
                 } else {
                     //多分もうここにくることはない
                     alert(i + ":" + j );
@@ -1244,7 +1763,7 @@ function drawEvtAndObj() {
                 currentMapContext.rect(j*mapLength ,i*mapLength , 10, 10);
                 // 塗りつぶしの色
                 currentMapContext.fillStyle = "yellow"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
-                if (currrentMapObj[i][j].hasOwnProperty('trigger')) currentMapContext.fillStyle = "red"; //イベントもトリガーも設定している場合は赤
+                if (currrentMapObj[i][j].hasOwnProperty('trigger') && currrentMapObj[i][j].trigger != "トリガー設定なし") currentMapContext.fillStyle = "red"; //イベントもトリガーも設定している場合は赤
                 //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
                 // 塗りつぶしを実行
                 currentMapContext.fill();
@@ -1320,6 +1839,322 @@ function registEventToObj(evtName, objFlg = false) {
         return;
     }
 
+    //まずはバリデーション（ツールで初めて作成。他のイベントについても、必要を感じたら充実させていく）
+    switch (evtName) {
+        case 'talk':
+            if (currentRegisteredEvent == '') {
+                //新規のイベントの場合
+                if (objFlg == false) {
+
+                } else {
+
+                }
+            } else {
+                //既存のイベントの場合
+                if (objFlg == false) {
+
+                } else {
+                }
+            }
+        break;
+
+        case 'question':
+            if (currentRegisteredEvent == '') {
+                if (objFlg == false) {
+
+                } else {
+
+                }
+
+            } else {
+                //既存のイベントの場合
+                if (objFlg == false) {
+
+                } else {
+
+                }
+            }
+            
+        break;
+
+        case 'transition':
+            if (currentRegisteredEvent == '') {
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+
+                } else {
+
+                }
+            } else {
+                //既存のイベントの場合
+                if (objFlg == false) {
+
+                } else {
+
+                }
+            }
+            
+        break;
+
+        case 'battle':
+            if (currentRegisteredEvent == '') {
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+
+                } else {
+
+                }
+
+            } else {
+                //既存のイベントの場合
+                if (objFlg == false) {
+
+                } else {
+
+                }
+            }   
+        break;
+        case 'tool':
+            if (currentRegisteredEvent == '') {
+                //新規イベントの場合
+                if (objFlg == false) {
+                    //メモ：もらいと使用の2パターンがある
+                    //判定はどうしよう、チェックしてる方？
+                    if (toolEventType == "get") {
+                    //ひろい
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                    } else {
+                    //使用 toolEventType == "use"
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                        var OKtalkContent = document.getElementById('OKtalkContent').value;
+                        if (OKtalkContent == '' || OKtalkContent == null) {
+                            alert("OKトークコンテンツを入力してください");
+                            return;
+                        }
+                        var NGtalkContent = document.getElementById('NGtalkContent').value;
+                        if (NGtalkContent == '' || NGtalkContent == null) {
+                            alert("NGトークコンテンツを入力してください");
+                            return;
+                        }
+                    }
+                } else {
+                    if (toolEventType == "get") {
+                    //ひろい
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                    } else {
+                    //使用 toolEventType == "use"
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        };
+                        var OKtalkContent = document.getElementById('OKtalkContent').value;
+                        if (OKtalkContent == '' || OKtalkContent == null) {
+                            alert("OKトークコンテンツを入力してください");
+                            return;
+                        }
+                        var NGtalkContent = document.getElementById('NGtalkContent').value;
+                        if (NGtalkContent == '' || NGtalkContent == null) {
+                            alert("NGトークコンテンツを入力してください");
+                            return;
+                        }
+                    }
+                }
+            } else {
+                if (objFlg == false) {
+                    //メモ：もらいと使用の2パターンがある
+                    //判定はどうしよう、チェックしてる方？
+                    if (toolEventType == "get") {
+                    //ひろい
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                    } else {
+                    //使用 toolEventType == "use"
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                        var OKtalkContent = document.getElementById('OKtalkContent').value;
+                        if (OKtalkContent == '' || OKtalkContent == null) {
+                            alert("OKトークコンテンツを入力してください");
+                            return;
+                        }
+                        var NGtalkContent = document.getElementById('NGtalkContent').value;
+                        if (NGtalkContent == '' || NGtalkContent == null) {
+                            alert("NGトークコンテンツを入力してください");
+                            return;
+                        }
+                    }
+                } else {
+                    if (toolEventType == "get") {
+                    //ひろい
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                    } else {
+                    //使用 toolEventType == "use"
+                        var toolId = document.getElementById('selectedTool');
+                        if (toolId == null) {
+                            alert("ツールを設定してください。");
+                            return;
+                        }
+                        var OKtalkContent = document.getElementById('OKtalkContent').value;
+                        if (OKtalkContent == '' || OKtalkContent == null) {
+                            alert("OKトークコンテンツを入力してください");
+                            return;
+                        }
+                        var NGtalkContent = document.getElementById('NGtalkContent').value;
+                        if (NGtalkContent == '' || NGtalkContent == null) {
+                            alert("NGトークコンテンツを入力してください");
+                            return;
+                        }
+                    }
+                }
+            }
+        break;
+        case 'effect':
+            if (currentRegisteredEvent == '') {
+                //新規イベントの場合
+                //shake、reaction、animationの3つがある
+                switch (currentEffectType) {
+                    case 'shake':
+                        if (objFlg == false) {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：マップ");
+                                return;
+                            }
+                            var selectedShakeType = document.getElementById('selectedShakeType').innerText;
+                            if (selectedShakeType == '' || selectedShakeType == null) {
+                                alert("揺れタイプを入力してください：マップ");
+                                return;
+                            }
+                        } else {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：オブジェクト");
+                                return;
+                            }
+                            var selectedShakeType = document.getElementById('selectedShakeType').innerText;
+                            if (selectedShakeType == '' || selectedShakeType == null) {
+                                alert("揺れタイプを入力してください：オブジェクト");
+                                return;
+                            }
+                        }                
+                    break;
+
+                    case 'reaction':
+                        if (objFlg == false) {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：マップ");
+                                return;
+                            }
+                            var selectedReaction = document.getElementById('selectedReaction').innerText;
+                            if (selectedReaction == '' || selectedReaction == null) {
+                                alert("リアクションを入力してください：マップ");
+                                return;
+                            }
+                        } else {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：オブジェクト");
+                                return;
+                            }
+                            var selectedReaction = document.getElementById('selectedReaction').innerText;
+                            if (selectedReaction == '' || selectedReaction == null) {
+                                alert("リアクションを入力してください：オブジェクト");
+                                return;
+                            }
+                        }
+                    break;
+
+                    case 'animation':
+                    break;
+                }
+            } else {
+                //既存イベントの場合
+                //shake、reaction、animationの3つがある
+                switch (currentEffectType) {
+                    case 'shake':
+                        if (objFlg == false) {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：マップ");
+                                return;
+                            }
+                            var selectedShakeType = document.getElementById('selectedShakeType').innerText;
+                            if (selectedShakeType == '' || selectedShakeType == null) {
+                                alert("揺れタイプを入力してください：マップ");
+                                return;
+                            }
+                        } else {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：オブジェクト");
+                                return;
+                            }
+                            var selectedShakeType = document.getElementById('selectedShakeType').innerText;
+                            if (selectedShakeType == '' || selectedShakeType == null) {
+                                alert("揺れタイプを入力してください：マップ");
+                                return;
+                            }
+                        }                
+                    break;
+
+                    case 'reaction':
+                        if (objFlg == false) {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：マップ");
+                                return;
+                            }
+                            var selectedReaction = document.getElementById('selectedReaction').innerText;
+                            if (selectedReaction == '' || selectedReaction == null) {
+                                alert("リアクションを入力してください：マップ");
+                                return;
+                            }
+                        } else {
+                            var selectedSound = document.getElementById('selectedSound').innerText;
+                            if (selectedSound == '' || selectedSound == null) {
+                                alert("サウンドを入力してください：オブジェクト");
+                                return;
+                            }
+                            var selectedReaction = document.getElementById('selectedReaction').innerText;
+                            if (selectedReaction == '' || selectedReaction == null) {
+                                alert("リアクションを入力してください：オブジェクト");
+                                return;
+                            }
+                        }
+                    break;
+
+                    case 'animation':
+                    break;
+                }
+            }
+        break;
+        case '拾いイベント（固定）':
+
+        break;
+    }
     var hasEventflg = false;
     //イベントチェック
     if (objFlg == false) {
@@ -1332,7 +2167,23 @@ function registEventToObj(evtName, objFlg = false) {
         }
     }
 
-    var evtNameKey = getEventKey(evtName, objFlg);
+    //イベントのキー（日付入り）を取得
+    var evtNameKey = getEventKey(evtName);
+
+    //バリデーションも済んだこのタイミングで、現在選択中のマップチップにnew Object()
+    if (objFlg == false) {
+        //新規イベントの場合
+        if (!hasEventflg) {
+            //イベントの配列用オブジェクト
+            currentMapTip.events = new Object();
+        }
+    } else {
+        //新規イベントの場合
+        if (!hasEventflg) {
+            //イベントの配列用オブジェクト
+            currentMapTip.object.events = new Object();
+        }
+    }
     //イベントを登録する
     switch (evtName) {
         case 'talk':
@@ -1345,12 +2196,13 @@ function registEventToObj(evtName, objFlg = false) {
                     currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    //やっぱりここで、「getProjectData」だった場合の対処にした方が良いな、想定外の値だったけど、今は終わらせることを優先、、
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.events[evtNameKey]['wipe'] = imgName;
                     }
                 } else {
@@ -1361,12 +2213,12 @@ function registEventToObj(evtName, objFlg = false) {
                     currentMapTip.object.events[evtNameKey].talkContent = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.object.events[evtNameKey]['wipe'] = imgName;
                     }
                 }
@@ -1377,24 +2229,24 @@ function registEventToObj(evtName, objFlg = false) {
                     currentMapTip.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.events[currentRegisteredEvent]['wipe'] = imgName;
                     }
                 } else {
                     currentMapTip.object.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.object.events[currentRegisteredEvent]['wipe'] = imgName;
                     }
                 }
@@ -1411,12 +2263,12 @@ function registEventToObj(evtName, objFlg = false) {
                     currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.events[evtNameKey]['wipe'] = imgName;
                     }
                 } else {
@@ -1426,12 +2278,12 @@ function registEventToObj(evtName, objFlg = false) {
                     currentMapTip.object.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.object.events[evtNameKey]['wipe'] = imgName;
                     }
                 }
@@ -1442,24 +2294,24 @@ function registEventToObj(evtName, objFlg = false) {
                     currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.events[currentRegisteredEvent]['wipe'] = imgName;
                     }
                 } else {
                     currentMapTip.object.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
-                    if (selectedWipeImage == null) {
+                    var fullSrc = decodeURI(selectedWipeImage.src);
+                    var imgName = fullSrc.split("/").reverse()[0]
+                    if (imgName == 'getProjectData') {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        var fullSrc = decodeURI(selectedWipeImage.src);
-                        var imgName = fullSrc.split("/").reverse()[0]
                         currentMapTip.object.events[currentRegisteredEvent]['wipe'] = imgName;
                     }
                 }
@@ -1550,6 +2402,204 @@ function registEventToObj(evtName, objFlg = false) {
                 }
             }   
         break;
+        case 'tool':
+            if (currentRegisteredEvent == '') {
+                //新規イベントの場合
+                if (objFlg == false) {
+                    //メモ：もらいと使用の2パターンがある
+                    //判定はどうしよう、チェックしてる方？
+                    if (toolEventType == "get") {
+                    //ひろい
+                        currentMapTip.events[evtNameKey] = new Object(); 
+                        currentMapTip.events[evtNameKey].type = toolEventType;
+                        currentMapTip.events[evtNameKey].toolId = document.getElementById('selectedTool').value;
+                    } else {
+                    //使用 toolEventType == "use"
+                        currentMapTip.events[evtNameKey] = new Object(); 
+                        currentMapTip.events[evtNameKey].type = toolEventType;
+                        currentMapTip.events[evtNameKey].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.events[evtNameKey].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.events[evtNameKey].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.events[evtNameKey].delToolFlg = document.getElementById('delToolFlg').value;
+                        var selectedWipeImage = document.getElementById('selectedWipeImage');
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        if (imgName == 'getProjectData') {
+                            //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                            //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                        } else {
+                            currentMapTip.events[evtNameKey].wipe = imgName;
+                        }
+                    }
+                } else {
+                    if (toolEventType == "get") {
+                    //ひろい
+                        currentMapTip.object.events[evtNameKey] = new Object(); 
+                        currentMapTip.object.events[evtNameKey].type = toolEventType;
+                        currentMapTip.object.events[evtNameKey].toolId = document.getElementById('selectedTool').value;
+                    } else {
+                    //使用 toolEventType == "use"
+                        currentMapTip.object.events[evtNameKey] = new Object(); 
+                        currentMapTip.object.events[evtNameKey].type = toolEventType;
+                        currentMapTip.object.events[evtNameKey].toolId = document.getElementById('selectedTool').value
+                        currentMapTip.object.events[evtNameKey].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.object.events[evtNameKey].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.object.events[evtNameKey].delToolFlg = document.getElementById('delToolFlg').value;
+                        var selectedWipeImage = document.getElementById('selectedWipeImage');
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        if (imgName == 'getProjectData') {
+                            //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                            //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                        } else {
+                            currentMapTip.object.events[evtNameKey].wipe = imgName;
+                        }
+                    }
+                }
+            } else {
+                if (objFlg == false) {
+                    //メモ：もらいと使用の2パターンがある
+                    //判定はどうしよう、チェックしてる方？
+                    if (toolEventType == "get") {
+                    //ひろい
+                        currentMapTip.events[currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.events[currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
+                    } else {
+                    //使用 toolEventType == "use"
+                        currentMapTip.events[currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.events[currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.events[currentRegisteredEvent].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.events[currentRegisteredEvent].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.events[currentRegisteredEvent].delToolFlg = document.getElementById('delToolFlg').value;
+                        var selectedWipeImage = document.getElementById('selectedWipeImage');
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        if (imgName == 'getProjectData') {
+                            //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                            //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                        } else {
+                            currentMapTip.events[currentRegisteredEvent].wipe = imgName;
+                        }
+                    }
+                } else {
+                    if (toolEventType == "get") {
+                    //ひろい
+                        currentMapTip.object.events[currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.object.events[evtNacurrentRegisteredEventmeKey].toolId = document.getElementById('selectedTool').value;
+                    } else {
+                    //使用 toolEventType == "use"
+                        currentMapTip.object.events[currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.object.events[currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.object.events[currentRegisteredEvent].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.object.events[currentRegisteredEvent].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.object.events[currentRegisteredEvent].delToolFlg = document.getElementById('delToolFlg').value;
+                        var selectedWipeImage = document.getElementById('selectedWipeImage');
+                        var fullSrc = decodeURI(selectedWipeImage.src);
+                        var imgName = fullSrc.split("/").reverse()[0]
+                        if (imgName == 'getProjectData') {
+                            //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                            //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                        } else {
+                            currentMapTip.object.events[currentRegisteredEvent].wipe = imgName;
+                        }
+                    }
+                }
+            }
+        break;
+        case 'effect':
+            if (currentRegisteredEvent == '') {
+            // 新規の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            currentMapTip.events[evtNameKey] = new Object(); 
+                            currentMapTip.events[evtNameKey].type = 'shake'; //shake
+                            currentMapTip.events[evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.events[evtNameKey] = new Object(); 
+                            currentMapTip.events[evtNameKey].type = 'reaction'; //reaction
+                            currentMapTip.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                } else {
+                    //オブジェクトイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            currentMapTip.object.events[evtNameKey] = new Object(); 
+                            currentMapTip.object.events[evtNameKey].type = 'shake'; //shake
+                            currentMapTip.object.events[evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;          
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.object.events[evtNameKey] = new Object(); 
+                            currentMapTip.object.events[evtNameKey].type = 'reaction'; //reaction
+                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                }
+            } else {
+            // 既存の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            //currentMapTip.events[currentRegisteredEvent] = new Object(); 
+                            currentMapTip.events[currentRegisteredEvent].type = 'shake'; //shake
+                            currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.events[currentRegisteredEvent].type = 'reaction'; //reaction
+                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                } else {
+                    //オブジェクトイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            //currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
+                            currentMapTip.object.events[currentRegisteredEvent].type = 'shake'; //shake
+                            currentMapTip.object.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;          
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.object.events[currentRegisteredEvent].type = 'reaction'; //reaction
+                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                }
+            }
+        break;
+        case '拾いイベント（固定）':
+
+        break;
     }
     //マップオブジェクトに現在マップオブジェクトの変更を反映
     currrentMapObj[rowNum][colNum] = currentMapTip;
@@ -1574,20 +2624,7 @@ function registEventToObj(evtName, objFlg = false) {
     //マップリロード
     reloadEditMap();
 
-    function getEventKey(evtName, objFlg){
-        if (objFlg == false) {
-            //新規イベントの場合
-            if (!hasEventflg) {
-                //イベントの配列用オブジェクト
-                currentMapTip.events = new Object();
-            }
-        } else {
-            //新規イベントの場合
-            if (!hasEventflg) {
-                //イベントの配列用オブジェクト
-                currentMapTip.object.events = new Object();
-            }
-        }
+    function getEventKey(evtName){
         //イベントのキーを作成
         var now = new Date();
         var Year = String(now.getFullYear());
@@ -1615,5 +2652,18 @@ function saveMapToServer() {
         document.forms['map_data'].elements['project_name'].value = projectName.innerText;
         document.forms['map_data'].elements['project_data'].value = prjObjTxt;
         document.forms['map_data'].submit();
+    }
+}
+
+var isNormal = true; //ノートPC
+function switchCanvasSize() {
+    if (isNormal) {
+        document.getElementById('currentMapContainer').style.width = 2000 + 'px';
+        document.getElementById('currentMapContainer').style.height = 1300 + 'px';
+        isNormal = false;
+    } else {
+        document.getElementById('currentMapContainer').style.width = 480 + 'px';
+        document.getElementById('currentMapContainer').style.height = 480 + 'px';
+        isNormal = true;
     }
 }

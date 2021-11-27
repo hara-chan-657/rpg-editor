@@ -11,6 +11,148 @@ use App\Character;  //モデルクラスを使用するために追記
 
 class CharacterController extends Controller
 {
+    //主人公設定画面を表示する
+    public function editMainCharacter(Request $request) {
+        $charaFiles = $this->getObjCharaFiles($request->project);
+        //$charas = $this->getCharacters($request->project);
+        //$skills = $this->getSkills($request->project);
+        //$specialSkills = $this->getSpecialSkills($request->project);
+
+        //return view('rpg-editor.edit-MainCharacter', ['pngFiles'=>$pngFiles, 'project'=>$request->project, 'charas'=>$charas, 'skills'=>$skills, 'specialSkills'=>$specialSkills]);
+        return view('rpg-editor.edit-MainCharacter', ['charaFiles'=>$charaFiles]);
+    }
+
+    //rpg-Playerに登録してある画像ファイル情報を取得する（まだキャラクターとしてDBに保存しているとは限らない）
+    public function getObjCharaFiles($project) {
+        //$charaFiles = array();
+        $excludes = array(
+            '.',
+            '..',
+            '.DS_Store'
+        );
+
+        $pattern = "./projects/" . $project . "/projectData.json";
+        $rets = glob($pattern);
+        $json = file_get_contents($rets[0]);
+        $json = mb_convert_encoding($json, 'UTF8', 'ASCII,JIS,UTF-8,EUC-JP,SJIS-WIN');
+        // 連想配列へのアクセス方法
+        $arr = json_decode($json,true);
+
+        //キャラクター毎
+        $charaObjPattern = '';
+        foreach(glob('../../rpg-player/public/projects/' . $project . '/objects/characters/*') as $objCharaDir){
+            if (in_array($objCharaDir, $excludes)) {
+                continue;
+            }
+            $aryDirectionExist = array(
+                'f' => array(),
+                'fr' => array(),
+                'fl' => array(),
+                'b' => array(),
+                'br' => array(),
+                'bl' => array(),
+                'r' => array(),
+                'rr' => array(),
+                'l' => array(),
+                'll' => array(),
+                'ot' => array(),
+            );
+            $charaName = basename($objCharaDir);
+
+            $charaObjPattern .= '<div id="tbl_' . $charaName . '" style="display:">';
+            $charaObjPattern .= '<table border="1">';
+            $charaObjPattern .= '<tr>';
+            $th = '<th>選択</th><th>キャラ名</th>';
+            if (isset($arr["mainChara"]) && $arr["mainChara"] == $charaName) {
+                $td = '<td><input type="radio" name="mainChara" value="'.$charaName.'" checked></td><td>'. $charaName . '</td>';
+            } else {
+                $td = '<td><input type="radio" name="mainChara" value="'.$charaName.'"></td><td>'. $charaName . '</td>';
+            }
+            //キャラのファイル毎に、存在方向配列にデータを保存していく
+            foreach(glob($objCharaDir . '/*.png') as $charaFile){
+                if(is_file($charaFile)){
+                    $sPos = strpos($charaFile, '_D');
+                    $ePos = strpos($charaFile, '.png');
+                    $direction = substr($charaFile, $sPos+2, $ePos-($sPos+2));
+                    // 方向存在配列の該当の方向の値を更新する（方向存在配列キーは方向、バリューはまるばつ）
+                    $aryDirectionExist[$direction][] = $charaFile;
+                }
+            }
+            //存在方向配列毎に、thの行とtdの行を作っていく
+            foreach($aryDirectionExist AS $dire => $aryPath) {
+                $th .= '<th>' . $dire . '</th>';
+                $td .= '<td>';
+                foreach($aryPath AS $key => $val) {
+                    $val = str_replace('../..', '', $val);
+                    $td .= '<img src="' . $val . '">';
+                }
+                $td .= '</td>';
+            }
+            $charaObjPattern .= $th;  //thの行埋め込み
+            $charaObjPattern .= '</tr>';
+            $charaObjPattern .= '<tr>';
+            $charaObjPattern .= $td;  //tdの行埋め込み
+            $charaObjPattern .= '</tr>';
+            $charaObjPattern .= '</table>';
+            $charaObjPattern .= '</div>';
+        }
+        $charaObjPattern .= '<input type="hidden" name="project" id="" value="'. $project .'">';
+        return $charaObjPattern;
+    }
+
+    //主人公をprojectData.jsonに保存する（
+    public function saveMainCharacter(Request $request) {
+        //$charaFiles = $this->getObjCharaFiles($request->projects);
+        // コントローラディレクトリなのに、パブリックディレクトリから検索スタートになってる！！！なぜ！！
+        $pattern = "./projects/" . $request->project . "/projectData.json";
+        $rets = glob($pattern);
+        $json = file_get_contents($rets[0]);
+        $json = mb_convert_encoding($json, 'UTF8', 'ASCII,JIS,UTF-8,EUC-JP,SJIS-WIN');
+        // 連想配列へのアクセス方法
+        $arr = json_decode($json,true);
+
+        // $results = glob("../../rpg-player/public/projects/" . $request->project . "/objects/characters/" . $request->mainChara . "/*.png");
+        // foreach ($results as $key => $value) {
+        //     $arr["mainChara"][]
+        // }
+        $aryDirectionExist = array(
+            'f' => '',
+            'fr' => '',
+            'fl' => '',
+            'b' => '',
+            'br' => '',
+            'bl' => '',
+            'r' => '',
+            'rr' => '',
+            'l' => '',
+            'll' => '',
+            'ot' => '',
+        );
+        foreach(glob("../../rpg-player/public/projects/" . $request->project . "/objects/characters/" . $request->mainChara . "/*.png") as $charaFile){
+            if(is_file($charaFile)){
+                $sPos = strpos($charaFile, '_D');
+                $ePos = strpos($charaFile, '.png');
+                $direction = substr($charaFile, $sPos+2, $ePos-($sPos+2));
+                // 方向存在配列の該当の方向の値を更新する（方向存在配列キーは方向、バリューはまるばつ）
+                $aryDirectionExist[$direction] = basename($charaFile);
+            }
+        }
+        $arr["mainChara"] = array(); // 配列であることを明言してから値を突っ込まないと、Illegal string offsetのエラーになる。。
+        foreach ($aryDirectionExist as $key => $value) {
+            $arr["mainChara"][$key] = $value;
+        }
+        $arr["mainChara"]['name'] = $request->mainChara;
+
+
+        //スキルを全部更新して保存（encode）
+        $json = json_encode($arr, JSON_UNESCAPED_UNICODE); //idでソートしないとダメかと思ったけど、綺麗に並んだ
+        file_put_contents($rets[0], $json);
+        file_put_contents("../../rpg-player/public/projects/" . $request->project . "/projectData.json", $json);
+
+        return $this->editMainCharacter($request);
+        //return view('rpg-editor.edit-MainCharacter', ['charaFiles'=>$charaFiles]);
+    }
+
     //キャラクター編集画面を表示する
     public function editCharacter(Request $request) {
         $pngFiles = $this->getPngFiles($request->project);
