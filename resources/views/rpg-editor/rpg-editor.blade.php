@@ -18,6 +18,7 @@
 
     <div id="mapContainer">
         <button onclick="switchCanvasSize()">キャンバス大きさ変更</button>
+        <button onclick="setTurnChipMode()" id="setTurnChipMode">マップ交互編集モード</button>
         <div id="setStartProjectContainer">
         </div>
         <div id="editStartPositionContainer" style="display:none">
@@ -32,21 +33,64 @@
                 <img src="" id="currentMapImage" style="display:none">
             </div>
         </div>
-        <div id="mapDataContainer">
-            <p id="mapTypeName"></p>
-            <p id="mapPassProperty"></p>
-            <div id="eventTrigger"></div>
-            <div id="mapEvent"></div>
-            <div id="editEventContainer">
-                <div id="eventLists"></div>
+        <div id="mapEventEditConntainer">
+            <div id="mapDataContainer">
+                <p id="mapTypeName"></p>
+                <p id="mapPassProperty"></p>
+                <div id="eventTrigger"></div>
+                <div id="mapEvent"></div>
+                <div id="editEventContainer">
+                    <div id="eventLists"></div>
+                </div>
+                <div id="mapObject"></div>
+                <div id="editObjectContainer">
+                    <div id="objLists"></div>
+                    <div id="objEventLists"></div>
+                </div>
             </div>
-            <div id="mapObject"></div>
-            <div id="editObjectContainer">
-                <div id="objLists"></div>
-                <div id="objEventLists"></div>
+            <div id="editEvent">
             </div>
         </div>
-        <div id="editEvent">
+        <div id="turnChipEditContainer" style="display:none;">
+            <div id="currentMapChipContainer">
+                <button onclick="setTurnChipPutMode('put')" id="setTurnChipPutModePut" style="background-color: red;">put</button>
+                <button onclick="setTurnChipPutMode('del')" id="setTurnChipPutModeDel">del</button>
+                <p class="mapCategory">現在選択中のチップ</p>
+                <div id="currentMapChipBG" style="background-color: white;">
+                    <p>タイプ：<span id="currentMapChipType"></span></p>
+                    <p>チップ名：<span id="currentMapChipName"></span></p>
+                    <p>チップ画像：<img src="" id="currentMapChip"></p>
+                </div>
+            </div>
+            <!-- マップ交互設定用の画像コンテナ -->
+            <div id="turnChips" style="display:;">
+                <div id="turnChipContainer">
+                    <span style="background-color: yellow;">↓★★★★マップ交互★★★★</span>
+                    @foreach($turnChips as $key1 => $prjDir)
+                        <div id="turnChip_{{$key1}}_containter">
+                            <p id>■■■{{$key1}}</p> 
+                            @foreach($prjDir as $key2 => $turnChipDir)
+                                <p id="{{$key2}}">{{$key2}}</p>
+                                @foreach($turnChipDir as $chipPng)
+                                    <img class="" onclick="setCurrentMapChip('turnChip', '{{$key2}}', event)" src="../../map-editor/image/map-editor/map-chip/{{$key1}}/mapTurn/{{$key2}}/{{$chipPng}}" id="{{$chipPng}}">
+                                @endforeach
+                            @endforeach
+                        </div>
+                    @endforeach
+                    <span style="background-color: yellow;">↓★★★★マップパス交互★★★★</span>
+                    @foreach($turnPassChips as $key1 => $prjDir)
+                        <div id="turnChipPass_{{$key1}}_containter">
+                        <p>■■■{{$key1}}</p> 
+                        @foreach($prjDir as $key2 => $turnPassChipDir)
+                            <p id="{{$key2}}">>{{$key2}}</p>
+                            @foreach($turnPassChipDir as $chipPng)
+                                <img class="" onclick="setCurrentMapChip('turnChipPass', '{{$key2}}', event)" src="../../map-editor/image/map-editor/map-chip/{{$key1}}/mapTurnPass/{{$key2}}/{{$chipPng}}" id="{{$chipPng}}" alt="turnChipPass">
+                            @endforeach
+                        @endforeach
+                        </div>
+                    @endforeach        
+                </div>
+            </div>
         </div>
     </div>    
     <div id="saveProjectContainer">
@@ -318,6 +362,39 @@
         @endforeach
         </div>
     </div>
+
+    <!-- マップ交互は、マップエディタコンテナに直接表示した。多分忘れた頃にここを見にくるので、メモ -->
+    <!-- <span>↓マップ交互=====================================================================</span> -->
+
+    <!-- マップ交互設定用の画像コンテナ -->
+<!--     <div id="turnChips" style="display:;">
+        <div id="turnChipContainer">
+        <span style="background-color: yellow;">↓★★★★マップ交互★★★★</span>
+        @foreach($turnChips as $key1 => $prjDir)
+            <div id="turnChip_{{$key1}}">
+            <p>■■■{{$key1}}</p> 
+            @foreach($prjDir as $key2 => $turnChipDir)
+                <p>{{$key2}}</p>
+                @foreach($turnChipDir as $chipPng)
+                    <img class="turnChips" onclick="selectTurnChipImage(event)" src="../../map-editor/image/map-editor/map-chip/{{$key1}}/mapTurn/{{$key2}}/{{$chipPng}}" id="{{$chipPng}}">
+                @endforeach
+            @endforeach
+            </div>
+        @endforeach
+        <span style="background-color: yellow;">↓★★★★マップパス交互★★★★</span>
+        @foreach($turnPassChips as $key1 => $prjDir)
+            <div id="turnChip_{{$key1}}">
+            <p>■■■{{$key1}}</p> 
+            @foreach($prjDir as $key2 => $turnPassChipDir)
+                <p>{{$key2}}</p>
+                @foreach($turnPassChipDir as $chipPng)
+                    <img class="turnChips" onclick="selectTurnPassChipImage(event)" src="../../map-editor/image/map-editor/map-chip/{{$key1}}/mapTurnPass/{{$key2}}/{{$chipPng}}" id="{{$chipPng}}">
+                @endforeach
+            @endforeach
+            </div>
+        @endforeach        
+        </div>
+    </div> -->
 
     <span>↓ツール=====================================================================</span>
 

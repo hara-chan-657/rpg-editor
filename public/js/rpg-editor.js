@@ -115,7 +115,13 @@ for (var i=0; i<maps.length; i++) {
 //setStartProject.addEventListener('click', setStartProjectThisMap, false);
 saveStartPos.addEventListener('click', saveStartPosition, false);
 stopEditStartPos.addEventListener('click', stopEditStartPosition, false);
-currentMapCanvas.addEventListener('click', function(evt) {showMapTipData(evt);}, false);
+currentMapCanvas.addEventListener('click', function(evt) {
+        if (turnChipMode) {
+            setTurnChipToData(evt);
+        } else {
+            showMapTipData(evt);
+        }
+    }, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 // for (var i=0; i<objCharas.length; i++) {
 //     objCharas[i].addEventListener('click', function(evt) {selectObjectImage(evt);}, false);
@@ -153,7 +159,7 @@ function setEditMap(evt) {
     //スタートプロジェクトかチェック
     checkIsStartProject();
     //登録済みのイベントとオブジェクトを描画
-    drawEvtAndObj();
+    drawEvtAndObjAndTurnChip();
     //グリッド表示
     drawGrid();
 }
@@ -167,7 +173,7 @@ function reloadEditMap() {
     //スタートプロジェクトかチェック
     checkIsStartProject();
     //イベントとオブジェクト描画
-    drawEvtAndObj();
+    drawEvtAndObjAndTurnChip();
     //グリッド表示
     drawGrid();
 }
@@ -284,6 +290,102 @@ function stopEditStartPosition() {
         checkIsStartProject();
     }
 }
+
+//マップチップ交互の編集モードにする
+var turnChipMode = false;
+function setTurnChipMode() {
+
+    if (turnChipMode) {
+        turnChipMode = false;
+        document.getElementById("setTurnChipMode").style.backgroundColor = "";
+        document.getElementById("mapEventEditConntainer").style.display = 'inline-block';
+        document.getElementById("turnChipEditContainer").style.display = 'none';
+
+    } else {
+        turnChipMode = true;
+        document.getElementById("setTurnChipMode").style.backgroundColor = "red";
+        document.getElementById("mapEventEditConntainer").style.display = 'none';
+        document.getElementById("turnChipEditContainer").style.display = 'inline-block';
+    }
+
+}
+
+//マップチップ交互の編集モードにする
+var turnChipPutMode = true;
+function setTurnChipPutMode(mode) {
+
+    if (mode == "put" && turnChipPutMode == false) {
+        turnChipPutMode = true;
+        document.getElementById("setTurnChipPutModePut").style.backgroundColor = "red";
+        document.getElementById("setTurnChipPutModeDel").style.backgroundColor = "";
+        document.getElementById("currentMapChipBG").style.backgroundColor = "white";
+
+    } else if (mode == "del" && turnChipPutMode == true) {
+        turnChipPutMode = false;
+        document.getElementById("setTurnChipPutModePut").style.backgroundColor = "";
+        document.getElementById("setTurnChipPutModeDel").style.backgroundColor = "red";
+        document.getElementById("currentMapChipBG").style.backgroundColor = "red";
+    }
+
+}
+
+//現在マップチップセット
+var crtChip = []; //現在マップの情報格納配列
+function setCurrentMapChip(type, name, evt) {
+    //クリックしたチップのurl取得
+    document.getElementById("currentMapChipType").innerText = type;
+    document.getElementById("currentMapChipName").innerText = name;
+    document.getElementById("currentMapChip").src = evt.target.src;
+    crtChip['type'] = type;
+    crtChip['name'] = name;
+    //crtChip['src'] = evt.target.src; //いらないんだった
+}
+
+
+//マップ交互チップをデータにセットする
+function setTurnChipToData(evt) {
+
+    //現在選択中のイベントをクリア
+    // currentRegisteredEvent = '';
+
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+    //クリックしたマップチップを特定
+    colNum = Math.floor(mousePos.x/mapLength);
+    rowNum = Math.floor(mousePos.y/mapLength);
+
+    //jsonを編集
+    if (turnChipPutMode) {
+
+        if (crtChip['name'] === undefined) {
+            alert("チップを選択してください");
+            return;
+        }
+
+        var turnChipObj = new Object();
+        turnChipObj.name = crtChip['name'];
+
+        if (crtChip['type'] == 'turnChip') {
+            if (currrentMapObj[rowNum][colNum].hasOwnProperty('turnChipPass')) delete currrentMapObj[rowNum][colNum].turnChipPass;
+            currrentMapObj[rowNum][colNum].turnChip = turnChipObj;
+        } else if (crtChip['type'] == 'turnChipPass'){
+            if (currrentMapObj[rowNum][colNum].hasOwnProperty('turnChip')) delete currrentMapObj[rowNum][colNum].turnChip;
+            currrentMapObj[rowNum][colNum].turnChipPass = turnChipObj;
+        } else {}
+
+    } else {
+        delete currrentMapObj[rowNum][colNum].turnChipPass;
+        delete currrentMapObj[rowNum][colNum].turnChip;
+    }
+
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+
+}
+
 
 //マップチップのデータを表示する
 //param1 : クリック時イベント情報
@@ -1740,9 +1842,29 @@ function setTransitionMap(mapName, orgEvtName) {
 }
 
 //イベント持ち、オブジェクト持ちのマップチップ上に、それらを表示する
-function drawEvtAndObj() {
+function drawEvtAndObjAndTurnChip() {
     for (var i=0; i<Object.keys(currrentMapObj).length; i++) {
         for (var j=0; j<Object.keys(currrentMapObj[i]).length; j++) {
+            //一番最初に、マップ分類に近いマップ交互のデータを描画
+            if (currrentMapObj[i][j].hasOwnProperty('turnChip')) {
+                var chipDirName;
+                var img;
+                chipDirName = currrentMapObj[i][j].turnChip.name;
+                img = document.getElementById(chipDirName).nextElementSibling;
+                //currentMapContext.drawImage(img, j*mapLength ,i*mapLength - 8); // 立体的に見せるため、縦にちょっとずらす。
+                currentMapContext.drawImage(img, j*mapLength ,i*mapLength); // やっぱ立体的に見せない
+                drawTags('turnChip',j,i);
+            }
+            if (currrentMapObj[i][j].hasOwnProperty('turnChipPass')) {
+                var chipDirName;
+                var img;
+                chipDirName = currrentMapObj[i][j].turnChipPass.name;
+                img = document.getElementById(chipDirName).nextElementSibling;
+                //currentMapContext.drawImage(img, j*mapLength ,i*mapLength - 8); // 立体的に見せるため、縦にちょっとずらす。
+                currentMapContext.drawImage(img, j*mapLength ,i*mapLength); // やっぱ立体的に見せない
+                drawTags('turnChip',j,i);
+            }
+            //その後にオブジェクト、イベントを描画
             if (currrentMapObj[i][j].hasOwnProperty('object')) {
                 var objImgName;
                 var img;
@@ -1757,24 +1879,53 @@ function drawEvtAndObj() {
                 }
             }
             if (currrentMapObj[i][j].hasOwnProperty('events')) {
-                // パスをリセット
-                currentMapContext.beginPath () ;
-                // レクタングルの座標(50,50)とサイズ(75,50)を指定
-                currentMapContext.rect(j*mapLength ,i*mapLength , 10, 10);
-                // 塗りつぶしの色
-                currentMapContext.fillStyle = "yellow"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
-                if (currrentMapObj[i][j].hasOwnProperty('trigger') && currrentMapObj[i][j].trigger != "トリガー設定なし") currentMapContext.fillStyle = "red"; //イベントもトリガーも設定している場合は赤
-                //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
-                // 塗りつぶしを実行
-                currentMapContext.fill();
-                // 線の色
-                currentMapContext.strokeStyle = "purple" ;
-                // 線の太さ
-                currentMapContext.lineWidth =  1;
-                // 線を描画を実行
-                currentMapContext.stroke() ;
+                drawTags('events',j,i);
             }
         }
+    }
+}
+
+//タグを描画する（タイプ、x、y）
+function drawTags(type, j, i) {
+
+    switch(type) {
+
+        case 'turnChip':
+            // パスをリセット
+            currentMapContext.beginPath () ;
+            // レクタングルの座標(50,50)とサイズ(75,50)を指定
+            currentMapContext.rect(j*mapLength ,i*mapLength , 10, 10);
+            // 塗りつぶしの色
+            currentMapContext.fillStyle = "lime"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
+            // 塗りつぶしを実行
+            currentMapContext.fill();
+            // 線の色
+            currentMapContext.strokeStyle = "purple" ;
+            // 線の太さ
+            currentMapContext.lineWidth =  1;
+            // 線を描画を実行
+            currentMapContext.stroke() ;
+        break;
+
+
+        case 'events':
+            // パスをリセット
+            currentMapContext.beginPath () ;
+            // レクタングルの座標(50,50)とサイズ(75,50)を指定
+            currentMapContext.rect(j*mapLength ,i*mapLength , 10, 10);
+            // 塗りつぶしの色
+            currentMapContext.fillStyle = "yellow"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
+            if (currrentMapObj[i][j].hasOwnProperty('trigger') && currrentMapObj[i][j].trigger != "トリガー設定なし") currentMapContext.fillStyle = "red"; //イベントもトリガーも設定している場合は赤
+            //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
+            // 塗りつぶしを実行
+            currentMapContext.fill();
+            // 線の色
+            currentMapContext.strokeStyle = "purple" ;
+            // 線の太さ
+            currentMapContext.lineWidth =  1;
+            // 線を描画を実行
+            currentMapContext.stroke() ;
+        break;
     }
 }
 
