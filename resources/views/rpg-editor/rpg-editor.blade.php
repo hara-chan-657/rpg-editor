@@ -233,7 +233,7 @@
                         @if ($key2 == 'characters') 
                             @foreach($objType as $key3 => $charaDir)
                                 @foreach($charaDir as $charaPng)
-                                    <img class="obj_charas" onclick="selectObjectImage(event)" src="../../rpg-player/public/projects/{{$key1}}/objects/{{$key2}}/{{$key3}}/{{$charaPng}}" id="{{$charaPng}}">
+                                    <img class="obj_charas" onclick="selectObjectImage(event)" src="../../rpg-player/public/projects/{{$key1}}/objects/{{$key2}}/{{$key3}}/{{$charaPng}}" id="{{$charaPng}}" alt="{{$key3}}">
                                 @endforeach
                             @endforeach
                         @else
@@ -248,7 +248,7 @@
                         @if ($key2 == 'characters') 
                             @foreach($objType as $key3 => $charaDir)
                                 @foreach($charaDir as $charaPng)
-                                    <img class="obj_charas" onclick="selectObjectImage(event)" src="../../rpg-player/public/projects/{{$key1}}/objects/{{$key2}}/{{$key3}}/{{$charaPng}}" id="{{$charaPng}}">
+                                    <img class="obj_charas" onclick="selectObjectImage(event)" src="../../rpg-player/public/projects/{{$key1}}/objects/{{$key2}}/{{$key3}}/{{$charaPng}}" id="{{$charaPng}}" alt="{{$key3}}">
                                 @endforeach
                             @endforeach
                         @else
@@ -263,7 +263,7 @@
                         @if ($key2 == 'characters') 
                             @foreach($objType as $key3 => $charaDir)
                                 @foreach($charaDir as $charaPng)
-                                    <img class="obj_charas" onclick="selectObjectImage(event)" src="../../rpg-player/public/projects/{{$key1}}/objects/{{$key2}}/{{$key3}}/{{$charaPng}}" id="{{$charaPng}}">
+                                    <img class="obj_charas" onclick="selectObjectImage(event)" src="../../rpg-player/public/projects/{{$key1}}/objects/{{$key2}}/{{$key3}}/{{$charaPng}}" id="{{$charaPng}}" alt="{{$key3}}">
                                 @endforeach
                             @endforeach
                         @else

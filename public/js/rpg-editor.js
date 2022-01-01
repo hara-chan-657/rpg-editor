@@ -176,6 +176,8 @@ function reloadEditMap() {
     drawEvtAndObjAndTurnChip();
     //グリッド表示
     drawGrid();
+    //選択チップ枠表示
+    drawCurrentChipBorder();
 }
 
 //プロジェクトのjsonをすべてオブジェクトにロードする
@@ -776,7 +778,8 @@ function setObject(objectName) {
         //updateMapEventHTML();
         var html = '';
         //var objName = currentMapTip.object.objName;
-        html += '<p>オブジェクト名：' + objectName + '</p>';
+        html += '<p>オブジェクトタイプ：' + objectName + '</p>';
+        html += '<p>オブジェクト名：<span id="selectedObjName"></span></p>';
         html += '<span>選択中のオブジェクト</span><img id="selectedObjImage" src=""></img>';
         if (objectName == 'tool') {
             //currentMapTip.object.objName  ここで、選択中のマップチップに登録されているツールオブジェクトの、どうぐIDを取得。
@@ -822,8 +825,11 @@ function setObject(objectName) {
 //選択したオブジェクトを、選択中オブジェクトに表示する
 function selectObjectImage(evt) {
     var selectedObjImage = document.getElementById('selectedObjImage');
+    var selectedObjName = document.getElementById('selectedObjName');
+    // var tmp = decodeURI(evt.target.src);
     var tmp = decodeURI(evt.target.src);
     selectedObjImage.src = tmp;
+    selectedObjName.innerText = evt.target.alt;
     
 }
 
@@ -865,6 +871,12 @@ function registObject(objectName) {
     }
 
     currentMapTip.object.objName = objectName;
+
+    if (objectName == 'character') {
+        var charaName = document.getElementById('selectedObjName').innerText;
+        currentMapTip.object.charaName = charaName;
+    }
+
     currentMapTip.object.imgName = imgName;
     currentMapTip.object.trigger = 'Aボタン'; //オブジェクトのトリガはAボタン固定なので、意味あるかわからないが、、
 
@@ -1948,6 +1960,24 @@ function drawGrid(){
                 currentMapContext.stroke() ;
         }
     }   
+}
+
+function drawCurrentChipBorder() {
+    ////クリックしたマップチップを枠で囲う
+    // パスをリセット
+    currentMapContext.beginPath () ;
+    // レクタングルの座標(50,50)とサイズ(75,50)を指定
+    currentMapContext.rect(colNum*mapLength ,rowNum*mapLength , 32, 32);
+    // 塗りつぶしの色
+    //currentMapContext.fillStyle = "lime"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
+    // 塗りつぶしを実行
+    //currentMapContext.fill();
+    // 線の色
+    currentMapContext.strokeStyle = "red";
+    // 線の太さ
+    currentMapContext.lineWidth =  3;
+    // 線を描画を実行
+    currentMapContext.stroke() ;
 }
 
 //遷移先マップのポジションを取得する
