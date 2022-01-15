@@ -26,7 +26,7 @@ p {
 	display: inline-block;
 	overflow: scroll;
 	white-space:nowrap;
-	width: 480px;
+	width: 736px;
 	height: 480px;
 	background-color: white;
 }
@@ -167,6 +167,11 @@ p {
     display: none;
 }
 
+#editEvent2 {
+    border: 1px solid blue;
+    display: none;
+}
+
 #registEvent {
     background-color: red;
     color: white;
@@ -262,5 +267,14 @@ margin: 0px 3px;
     height: 300px;
     width: 400px;
     overflow: scroll;
+}
+
+#targetMoveChipContainerParent {
+    /* 高さ認識用 */
+    overflow:hidden;
+}
+.targetMoveChipContainer {
+    border: 1px solid green;
+    float: left;
 }
 

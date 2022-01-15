@@ -24,6 +24,8 @@ var currentMapTip;
 var editStartPosFlg = false;
 //マップチップエクスポートフラグ
 var exportMapChipFlg = false;
+//移動チップモードフラグ
+var setTargetMoveChipFlg = false;
 //スタートポジションX
 var startPosX;
 //スタートポジションY
@@ -42,6 +44,7 @@ var settingEvents = [
     "battle",
     "tool",
     "effect",
+    "move",
 ]
 //セット可能オブジェクト
 var settingObjects = [
@@ -116,12 +119,12 @@ for (var i=0; i<maps.length; i++) {
 saveStartPos.addEventListener('click', saveStartPosition, false);
 stopEditStartPos.addEventListener('click', stopEditStartPosition, false);
 currentMapCanvas.addEventListener('click', function(evt) {
-        if (turnChipMode) {
-            setTurnChipToData(evt);
-        } else {
-            showMapTipData(evt);
-        }
-    }, false);
+    if (selectObjModeFlg) {
+        showSelectedNewMoveObjInfo(evt);
+    } else {
+        showMapTipData(evt);
+    }
+}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 // for (var i=0; i<objCharas.length; i++) {
 //     objCharas[i].addEventListener('click', function(evt) {selectObjectImage(evt);}, false);
@@ -178,6 +181,8 @@ function reloadEditMap() {
     drawGrid();
     //選択チップ枠表示
     drawCurrentChipBorder();
+    //選択チップでの、画面枠表示
+    drawScreenBorder();
 }
 
 //プロジェクトのjsonをすべてオブジェクトにロードする
@@ -294,17 +299,17 @@ function stopEditStartPosition() {
 }
 
 //マップチップ交互の編集モードにする
-var turnChipMode = false;
+var turnChipModeFlg = false;
 function setTurnChipMode() {
 
-    if (turnChipMode) {
-        turnChipMode = false;
+    if (turnChipModeFlg) {
+        turnChipModeFlg = false;
         document.getElementById("setTurnChipMode").style.backgroundColor = "";
         document.getElementById("mapEventEditConntainer").style.display = 'inline-block';
         document.getElementById("turnChipEditContainer").style.display = 'none';
 
     } else {
-        turnChipMode = true;
+        turnChipModeFlg = true;
         document.getElementById("setTurnChipMode").style.backgroundColor = "red";
         document.getElementById("mapEventEditConntainer").style.display = 'none';
         document.getElementById("turnChipEditContainer").style.display = 'inline-block';
@@ -312,8 +317,8 @@ function setTurnChipMode() {
 
 }
 
-//マップチップ交互の編集モードにする
-var turnChipPutMode = true;
+//マップチップ交互の編集モードを切り替える（↑と似てるので注意）
+var turnChipPutMode = true;//（↑と似てるので注意）
 function setTurnChipPutMode(mode) {
 
     if (mode == "put" && turnChipPutMode == false) {
@@ -341,6 +346,503 @@ function setCurrentMapChip(type, name, evt) {
     crtChip['type'] = type;
     crtChip['name'] = name;
     //crtChip['src'] = evt.target.src; //いらないんだった
+}
+
+//移動チップの編集コンテナを追加する
+function addTargetMoveChipContainer() {
+    var childEle = document.getElementById("addChildEle").firstElementChild.cloneNode(true);
+    var parentDiv = document.getElementById("targetMoveChipContainerParent");
+    parentDiv.appendChild(childEle);
+    return ;
+}
+
+//移動チップの編集コンテナを削除する
+//選択中
+function deleteTargetMoveChipContainer() {
+    //選択していない場合NG
+    if (currentMoveChip == undefined) {
+        alert('削除対象を選択してください');
+        return;
+    }
+
+    if (!confirm('本当に削除しても良いですか？')) { 
+        return;
+    }
+
+    currentMoveChip.remove();
+
+    //マップの設定情報を描画
+    reloadEditMap();
+
+}
+
+function quitAddTargetMoveChip() {
+
+    //確認
+    var ret = confirm('入力中の情報はリセットされます。よろしいですか？');
+    if (!ret) return;
+
+    //戻すよ
+    currentMoveChip = undefined;
+
+    setTargetMoveChipFlg = false;
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = '';
+    mapDataContainer.style.backgroundColor = '';
+    editEvent.innerHTML = '';
+    editEvent.style.display = 'none';
+
+    //画面リセット
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+}
+
+//対象のチップを切り替える
+var currentMoveChip; //選択中のコンテナ
+function changeTargetMoveChip() {
+    //選択したチップのコンテナを強調する。
+    //内部で今選択中であることがわかるようにするのもここでやる
+    var elems = document.getElementsByName("targetMoveChip");
+    for(var i = 1; i <elems.length; i++){ //クローン用の0番目を回避するためにこんな書き方にしている。
+        if (elems[i].checked) {
+            elems[i].parentNode.style.backgroundColor = "yellow";
+            currentMoveChip = elems[i].parentNode;
+        } else {
+            elems[i].parentNode.style.backgroundColor = "";
+        }
+        //elems[i].checked でラジオボタンの選択を確認できる
+    }
+
+    //画面リセット
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+
+    //最初のチップを描画
+    var sposY = 0;
+    var sposX = 0;
+    var fromY = currentMoveChip.getElementsByClassName("fromY");
+    Array.from(fromY).forEach(function(event1) {sposY = Number(event1.innerText);});
+    var fromX = currentMoveChip.getElementsByClassName("fromX");
+    Array.from(fromX).forEach(function(event1) {sposX = Number(event1.innerText);});
+    // パスをリセット
+    currentMapContext.beginPath () ;
+    // レクタングルの座標(50,50)とサイズ(75,50)を指定
+    currentMapContext.rect(sposX*mapLength ,sposY*mapLength , 32, 32);
+    // 線の色
+    currentMapContext.strokeStyle = "darkorange";
+    // 線の太さ
+    currentMapContext.lineWidth = 5;
+    // 線を描画を実行
+    currentMapContext.stroke() ;
+
+    //動線を描画
+    var orders = currentMoveChip.getElementsByClassName("orders");
+    Array.from(orders).forEach(function(event) {
+
+        // //加算用変数
+        // var tmpFromY = 0;
+        // var tmpFromX = 0;
+
+        //ordersを1個ずつに分解、ループ、描画していく
+        var charas = event.innerText.split('');
+
+        for (var i=0; i<charas.length; i++) {
+            if (charas[i] == "0" || charas[i] == "1") { //下か上
+                charas[i] == "0" ? sposY++ : sposY--;
+
+            } else if (charas[i] == "2" || charas[i] == "3") { //右か左
+                charas[i] == "2" ? sposX++ : sposX--;
+
+            } else {
+
+            }
+
+            ////クリックしたマップチップを枠で囲う
+            // パスをリセット
+            currentMapContext.beginPath () ;
+            // レクタングルの座標(50,50)とサイズ(75,50)を指定
+            currentMapContext.rect(sposX*mapLength ,sposY*mapLength , 32, 32);
+            // 線の色
+            currentMapContext.strokeStyle = "orange";
+            // 線の太さ
+            currentMapContext.lineWidth =  3;
+            // 線を描画を実行
+            currentMapContext.stroke() ;
+
+        }
+    });
+
+
+}
+
+//ムーブチップの情報を取得する。
+function setTargetMoveChip(evt) {
+
+    if (currentMoveChip == undefined) {
+        alert("まずは対象を選択してください");
+        return;
+    }
+
+    //start
+    var undefinedFlg = true;
+    var fromX = currentMoveChip.getElementsByClassName("fromX");
+    Array.from(fromX).forEach(function(event) {
+        if (event.innerText != ""){
+            undefinedFlg = false;
+        }
+    });
+    var fromY = currentMoveChip.getElementsByClassName("fromY");
+    Array.from(fromY).forEach(function(event) {
+        if (event.innerText != ""){
+            undefinedFlg = false;
+        }
+    });
+    if (currentMoveChip != undefined && !undefinedFlg) {
+        var ret = confirm('fromが既に指定してあります。変更しますか？');
+        if (!ret) return;
+
+        //設定情報をリセット
+        var toX = currentMoveChip.getElementsByClassName("toX");
+        Array.from(toX).forEach(function(event) {event.innerText = "";});                 //toX
+        var toY = currentMoveChip.getElementsByClassName("toY");
+        Array.from(toY).forEach(function(event) {event.innerText = "";});                 //toY
+        var orders = currentMoveChip.getElementsByClassName("orders");
+        Array.from(orders).forEach(function(event) {event.innerText = "";});    //orders
+
+        //画面リセット
+        //マップを描画
+        currentMapContext.drawImage(currentMapImage, 0, 0);
+        //マップの設定情報を描画
+        reloadEditMap();
+    }
+
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+    //クリックしたマップチップを特定
+    var tmpColNum = Math.floor(mousePos.x/mapLength);
+    var tmpRowNum = Math.floor(mousePos.y/mapLength);
+
+
+    ////クリックしたマップチップを枠で囲う
+    // パスをリセット
+    currentMapContext.beginPath () ;
+    // レクタングルの座標(50,50)とサイズ(75,50)を指定
+    currentMapContext.rect(tmpColNum*mapLength ,tmpRowNum*mapLength , 32, 32);
+    // 線の色
+    currentMapContext.strokeStyle = "darkorange";
+    // 線の太さ
+    currentMapContext.lineWidth = 5;
+    // 線を描画を実行
+    currentMapContext.stroke() ;
+
+    //編集対象の情報を編集
+    //currentMoveChip.getElementByIdを使う
+    //書き込む
+
+    //start
+    var fromX = currentMoveChip.getElementsByClassName("fromX");
+    Array.from(fromX).forEach(function(event) {event.innerText = tmpColNum;});
+    var fromY = currentMoveChip.getElementsByClassName("fromY");
+    Array.from(fromY).forEach(function(event) {event.innerText = tmpRowNum;});
+
+}
+
+//命令を増やす
+//マップのリロードも行う。
+function addOrder(order) {
+
+    if (currentMoveChip == undefined) {
+        alert('対象チップを選択してください');
+        return;
+    }
+
+    var undefinedFlg = false;
+    var fromY = currentMoveChip.getElementsByClassName("fromY");
+    Array.from(fromY).forEach(function(event1) {
+        if (event1.innerText == "") undefinedFlg = true;
+    });
+    var fromX = currentMoveChip.getElementsByClassName("fromX");
+    Array.from(fromX).forEach(function(event1) {
+        if (event1.innerText == "") undefinedFlg = true;
+    });
+
+    if (undefinedFlg) {
+        alert('fromを指定してください');
+        return;
+    }
+
+    //命令番号を追加していく
+    var orders = currentMoveChip.getElementsByClassName("orders");
+    Array.from(orders).forEach(function(event) {
+        event.innerText = event.innerText + order;
+    });
+
+    //命令番号をループして、toの値をずらしていく（初期表示もこの方法で）
+    //この時、toの値毎に、マップに動線をつけていく（初期表示もこの方法で）
+
+    var orders = currentMoveChip.getElementsByClassName("orders");
+    Array.from(orders).forEach(function(event) {
+
+        //加算用変数
+        var tmpFromY = 0;
+        var tmpFromX = 0;
+
+        var fromY = currentMoveChip.getElementsByClassName("fromY");
+        Array.from(fromY).forEach(function(event1) {tmpFromY = Number(event1.innerText);});
+        var fromX = currentMoveChip.getElementsByClassName("fromX");
+        Array.from(fromX).forEach(function(event1) {tmpFromX = Number(event1.innerText);});
+
+
+        //ordersを1個ずつに分解、ループ、加算していく
+        var charas = event.innerText.split('');
+
+        for (var i=0; i<charas.length; i++) {
+            if (charas[i] == "0" || charas[i] == "1") { //下か上
+                charas[i] == "0" ? tmpFromY++ : tmpFromY--;
+
+            } else if (charas[i] == "2" || charas[i] == "3") { //右か左
+                charas[i] == "2" ? tmpFromX++ : tmpFromX--;
+
+            } else {//止
+                //charas[i] == "4"
+            }
+
+            ////クリックしたマップチップを枠で囲う
+            // パスをリセット
+            currentMapContext.beginPath () ;
+            // レクタングルの座標(50,50)とサイズ(75,50)を指定
+            currentMapContext.rect(tmpFromX*mapLength ,tmpFromY*mapLength , 32, 32);
+            // 線の色
+            currentMapContext.strokeStyle = "orange";
+            // 線の太さ
+            currentMapContext.lineWidth =  3;
+            // 線を描画を実行
+            currentMapContext.stroke() ;
+
+        }
+
+        //加算済みの値をtoに入れる
+        var toY = currentMoveChip.getElementsByClassName("toY");
+        Array.from(toY).forEach(function(event1) {event1.innerText = tmpFromY;});
+        var toX = currentMoveChip.getElementsByClassName("toX");
+        Array.from(toX).forEach(function(event1) {event1.innerText = tmpFromX;});
+
+    });
+    
+}
+
+//命令を減らす
+//マップのリロードも行う。
+function delOrder() {
+
+    if (currentMoveChip == undefined) {
+        alert('対象チップを選択してください');
+        return;
+    }
+
+    var undefinedFlg = false;
+    var fromY = currentMoveChip.getElementsByClassName("fromY");
+    Array.from(fromY).forEach(function(event1) {
+        if (event1.innerText == "") undefinedFlg = true;
+    });
+    var fromX = currentMoveChip.getElementsByClassName("fromX");
+    Array.from(fromX).forEach(function(event1) {
+        if (event1.innerText == "") undefinedFlg = true;
+    });
+
+    if (undefinedFlg) {
+        alert('fromを指定してください');
+        return;
+    }
+
+    //命令番号を減らす
+    var orders = currentMoveChip.getElementsByClassName("orders");
+    Array.from(orders).forEach(function(event) {
+    
+        //ordersの最後を取っ払う
+        var charas = event.innerText.split('');
+        charas.pop();
+        var tmp  = ""
+        for (var i=0; i<charas.length; i++) {
+            tmp = tmp + charas[i];
+        }
+        event.innerText = tmp;
+    });
+
+    //命令番号をループして、toの値をずらしていく（初期表示もこの方法で）
+    //この時、toの値毎に、マップに動線をつけていく（初期表示もこの方法で）
+
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+
+    var orders = currentMoveChip.getElementsByClassName("orders");
+    Array.from(orders).forEach(function(event) {
+
+        //加算用変数
+        var tmpFromY = 0;
+        var tmpFromX = 0;
+
+        var fromY = currentMoveChip.getElementsByClassName("fromY");
+        Array.from(fromY).forEach(function(event1) {tmpFromY = Number(event1.innerText);});
+        var fromX = currentMoveChip.getElementsByClassName("fromX");
+        Array.from(fromX).forEach(function(event1) {tmpFromX = Number(event1.innerText);});
+        // パスをリセット
+        currentMapContext.beginPath () ;
+        // レクタングルの座標(50,50)とサイズ(75,50)を指定
+        currentMapContext.rect(tmpFromX*mapLength ,tmpFromY*mapLength , 32, 32);
+        // 線の色
+        currentMapContext.strokeStyle = "darkorange";
+        // 線の太さ
+        currentMapContext.lineWidth = 5;
+        // 線を描画を実行
+        currentMapContext.stroke() ;
+
+        //ordersを1個ずつに分解、ループ、加算していく
+        var charas = event.innerText.split('');
+
+        for (var i=0; i<charas.length; i++) {
+            if (charas[i] == "0" || charas[i] == "1") { //下か上
+                charas[i] == "0" ? tmpFromY++ : tmpFromY--;
+
+            } else if (charas[i] == "2" || charas[i] == "3") { //右か左
+                charas[i] == "2" ? tmpFromX++ : tmpFromX--;
+
+            } else {
+
+            }
+
+            ////クリックしたマップチップを枠で囲う
+            // パスをリセット
+            currentMapContext.beginPath () ;
+            // レクタングルの座標(50,50)とサイズ(75,50)を指定
+            currentMapContext.rect(tmpFromX*mapLength ,tmpFromY*mapLength , 32, 32);
+            // 線の色
+            currentMapContext.strokeStyle = "orange";
+            // 線の太さ
+            currentMapContext.lineWidth =  3;
+            // 線を描画を実行
+            currentMapContext.stroke() ;
+        }
+
+        //加算済みの値をtoに入れる
+        var toY = currentMoveChip.getElementsByClassName("toY");
+        Array.from(toY).forEach(function(event1) {event1.innerText = tmpFromY;});
+        var toX = currentMoveChip.getElementsByClassName("toX");
+        Array.from(toX).forEach(function(event1) {event1.innerText = tmpFromX;});
+
+    });
+}
+
+//新ムーブオブジェクト選択モードにする
+var selectObjModeFlg = false;
+function startSelectObjMode() {
+
+    if (!confirm("開始すると、オブジェクトを選択するまでやめれません。よろしいですか？（後で直す、、）")) return;
+
+    //選択していない場合、リターン
+    if (currentMoveChip == undefined) {
+        alert('対象チップを選択してください');
+        return;
+    }
+
+    //フラグを変える（後で戻す）
+    selectObjModeFlg = true;
+
+    //赤文字にする（後で戻す）
+    document.getElementById("startSelectObjMode").style.backgroundColor = "red";
+
+    //背景をグレーアウト（後で戻す）
+    var editEvent = document.getElementById("editEvent");
+    editEvent.style.pointerEvents = 'none';
+    editEvent.style.backgroundColor = 'gray';
+
+}
+
+function showSelectedNewMoveObjInfo(evt) {
+
+    //情報を取得して、newMoveObjInfoに表示する
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+    //クリックしたマップチップを特定
+    var tmpColNum = Math.floor(mousePos.x/mapLength);
+    var tmpRowNum = Math.floor(mousePos.y/mapLength);
+
+    //現在マップオブジェクトから、選択したマップの情報を取得
+    var tmpCurrentMapTip = currrentMapObj[tmpRowNum][tmpColNum];
+
+    if (tmpCurrentMapTip.hasOwnProperty('object')) {
+
+        if (tmpCurrentMapTip.object.objName != "character") {
+            console.log("キャラオブジェクトを選択してください");
+            return;
+        }
+
+        var newMoveObjInfo = currentMoveChip.getElementsByClassName("newMoveObjInfo");
+        Array.from(newMoveObjInfo).forEach(function(event1) {
+            //オブジェクトの情報を表示
+            var html = '';
+            html += '<p>キャラ名：' + tmpCurrentMapTip.object.charaName + '</p>';
+            html += '<p>設定済みイベント一覧</p>';
+            html += '<ul>';
+            var evtIndex = 0;
+            for( key in tmpCurrentMapTip.object.events ) {
+                html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
+                evtIndex++;
+            }
+            html += '</ul>';
+            var objTxt = JSON.stringify(tmpCurrentMapTip.object);
+            html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
+            event1.innerHTML += html; //+=なのに注意。クリーチャーオブジェクトの場合、クリーチャーであることを直前のタグで表示しないと分かりづらいため。
+        });
+        
+
+    } else {
+        console.log("オブジェクトはありません");
+        return;
+    }
+
+    //マップからは、オブジェクトは削除する
+    delete currrentMapObj[tmpRowNum][tmpColNum]['object'];
+
+    //後で戻すのものを全部戻す
+    //フラグ
+    selectObjModeFlg = false;
+    //赤文字
+    document.getElementById("startSelectObjMode").style.backgroundColor = "";
+    //背景
+    var editEvent = document.getElementById("editEvent");
+    editEvent.style.pointerEvents = '';
+    editEvent.style.backgroundColor = '';
+
+    //マップを際描画する
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+    //マップの設定情報を描画
+    reloadEditMap();
+
+}
+
+//選択したオブジェクトを削除する（コンテナから情報を消せばOK）
+function deleteSelectObjMode() {
+
+    //選択していない場合、リターン
+    if (currentMoveChip == undefined) {
+        alert('対象チップを選択してください');
+        return;
+    }
+
+    var newMoveObjInfo = currentMoveChip.getElementsByClassName("newMoveObjInfo");
+    Array.from(newMoveObjInfo).forEach(function(event1) {
+        event1.innerHTML = "";
+    });
 }
 
 
@@ -396,6 +898,12 @@ function showMapTipData(evt) {
     //現在選択中のイベントをクリア
     currentRegisteredEvent = '';
 
+    // colNum, rowNumを更新する前にリターンする必要がある
+    if (setTargetMoveChipFlg) {
+        setTargetMoveChip(evt);
+        return;
+    }
+
 	//クリックした座標を取得する
 	var mousePos = getMousePosition(currentMapCanvas, evt);
     //クリックしたマップチップを特定
@@ -413,6 +921,11 @@ function showMapTipData(evt) {
     if (exportMapChipFlg) {
         var dist = document.getElementById('exportDist');
         dist.innerHTML = '(<span id="expX">' + colNum + '</span>:<span id="expY">' + rowNum + '</span>)';
+        return;
+    }
+
+    if (turnChipModeFlg) {
+        setTurnChipToData(evt);
         return;
     }
 
@@ -717,14 +1230,17 @@ function updateMapEventHTML() {
             } else {
                 mapObject.innerHTML += '<p>イベントはありません</p>';
             }
+            mapObject.innerHTML += '<div id="mapObjEvent"></div>';
+            var mapObjEvent = document.getElementById("mapObjEvent");
             //イベント追加ボタン
-            mapObject.innerHTML += '<p id="addEvent" onclick="addEvent(true)">イベントを追加</p>';
+            mapObjEvent.innerHTML += '<p id="addEvent" onclick="addEvent(true)">イベントを追加</p>';
             //イベント削除ボタン
-            mapObject.innerHTML += '<p id="deleteEvent" onclick="deleteEvent(true)">イベントを削除</p>';
+            mapObjEvent.innerHTML += '<p id="deleteEvent" onclick="deleteEvent(true)">イベントを削除</p>';
             //イベント順番マイナスボタン
-            mapObject.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'minus\', true)">↑</p>';
+            mapObjEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'minus\', true)">↑</p>';
             //イベント順番プラスボタン
-            mapObject.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\', true)">↓</p>';
+            mapObjEvent.innerHTML += '<p class="changeEventOrder" onclick="changeEventOrder(event,\'plus\', true)">↓</p>';
+
         } else {
         }
         editObjectContainer.style.display = 'none';
@@ -1066,6 +1582,13 @@ function deleteEvent(objFlg = false) {
         //イベント編集ウィンドウを閉じる
         editEvent.style.display = 'none';
     }
+
+    //ムーブ用のフラグを戻す
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = '';
+    mapDataContainer.style.backgroundColor = '';
+    startSelectObjModeFlg = false;
+    setTargetMoveChipFlg = false;
 
     //イベントのHTMLを更新
     updateMapEventHTML();
@@ -1477,6 +2000,161 @@ function setEvent(eventName, objFlg = false) {
                     }
                 }
             }
+            break;
+
+        case 'move':
+            //必要な情報
+            //①移動情報（以下セットで、複数指定可能にする）
+            //　1 対象のチップ（x, y）
+            //　2 命令（右とか左とか、対応する数字の羅列とかで良いかな）
+            //　3 移動後削除フラグ
+            //　4 対象のチップにキャラオブジェクトがない場合に表示するキャラオブジェクト※
+            //　　 ※いつものキャラオブジェクトの追加の仕方と全く一緒、イベントとかもつけれるようにする
+            //②移動速度
+            //  drawSpeed = 9 遅い;　drawSpeed = ６　中くらい　;drawSpeed = ３　速い
+            //その他、備考
+            //　命令の動線は、視覚的に分かるようにする（命令を追加or削除するたびに再描画だな）
+            //　命令の動線の開始点と終着点は、数字でも表示するようにする（前回移動からのつなぎを正確に把握するため）
+
+
+            //まずはムーブモード用に切り替える
+            setTargetMoveChipFlg = true;
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = 'none';
+            mapDataContainer.style.backgroundColor = 'gray';
+            //イベントの操作ボタンだけはクリックできるようにしておく
+            var mapEvent = document.getElementById("mapEvent");
+            mapEvent.style.pointerEvents = 'auto';
+
+            //情報取得
+            var chips = [];
+            var chipIndex = 1;
+            var drawSpeed;
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    drawSpeed = currentMapTip.events[orgEvtName].drawSpeed;
+                    while(currentMapTip.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
+                        chips.push(currentMapTip.events[orgEvtName]['chip_'+chipIndex]);
+                        chipIndex++;
+                    }
+                }
+            } else {
+                if (registeredFlg) {
+                    drawSpeed = currentMapTip.object.events[orgEvtName].drawSpeed;
+                    while(currentMapTip.object.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
+                        chips.push(currentMapTip.object.events[orgEvtName]['chip_'+chipIndex]);
+                        chipIndex++;
+                    }
+                }
+            }
+
+            //これは追加用の0番目のコンテナ（見えない）
+            html += '<p>【移動】</p>';
+            html += '<button onclick="quitAddTargetMoveChip()">やめる</button>';
+            html += '<button onclick="addTargetMoveChipContainer()">追加する</button>';
+            html += '<button onclick="deleteTargetMoveChipContainer()">削除する</button>';
+            html += '<div id="targetMoveChipContainerParent">';
+            html += '  <div id="addChildEle" style="display:none">';
+            html += '    <div class="targetMoveChipContainer">';
+            html += '      <input type="radio" name="targetMoveChip" value="" onChange="changeTargetMoveChip()"></input>';
+            html += '      <p>対象のチップ</p>';
+            html += '      <p>from（<span class="fromX"></span>：<span class="fromY"></span>）</p>';
+            html += '      <p>to（<span class="toX"></span>：<span class="toY"></span>）</p>';
+            html += '      <p>命令</p>';
+            html += '      <p>';
+            html += '        <button onclick="addOrder(\'3\')">←</button>';
+            html += '        <button onclick="addOrder(\'2\')">→</button>';
+            html += '        <button onclick="addOrder(\'1\')">↑</button>';
+            html += '        <button onclick="addOrder(\'0\')">↓</button>';
+            html += '        <button onclick="addOrder(\'4\')">止</button>';
+            html += '        <button onclick="delOrder()">削除</button>';
+            html += '      </p>';
+            html += '      <p class="orders"></p>';
+            html += '      <p>移動後削除<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
+            html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" onChange="">しない</input>';
+            html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" onChange="">する</input>';
+            html += '      <p>追加オブジェクト</p>';
+            html += '      <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
+            html += '      <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
+            html += '      <p><span class="newMoveObjInfo"></span></p>';
+            editEvent.innerHTML = html;
+            html += '    </div>';
+            html += '  </div>';
+            //設定済みのチップを格納
+            for (var i=0; i<chips.length; i++) {
+                var toX = Number(chips[i]['fromX']);
+                var toY = Number(chips[i]['fromY']);
+                var charas = chips[i]['orders'].split('');
+                for (var j=0; j<charas.length; j++) {
+                    if (charas[j] == "0" || charas[j] == "1") { //下か上
+                        charas[j] == "0" ? toY++ : toY--;
+                    } else if (charas[j] == "2" || charas[j] == "3") { //右か左
+                        charas[j] == "2" ? toX++ : toX--;
+                    } else {
+                    }
+                }
+                html += '  <div class="targetMoveChipContainer">';
+                html += '    <input type="radio" name="targetMoveChip" value="" onChange="changeTargetMoveChip()"></input>';
+                html += '    <p>対象のチップ</p>';
+                html += '    <p>from（<span class="fromX">'+ chips[i]['fromX']+'</span>：<span class="fromY">'+ chips[i]['fromY'] +'</span>）</p>';
+                html += '    <p>to（<span class="toX">'+ toX +'</span>：<span class="toY">'+ toY +'</span>）</p>';
+                html += '    <p>命令</p>';
+                html += '    <p>';
+                html += '      <button onclick="addOrder(\'3\')">←</button>';
+                html += '      <button onclick="addOrder(\'2\')">→</button>';
+                html += '      <button onclick="addOrder(\'1\')">↑</button>';
+                html += '      <button onclick="addOrder(\'0\')">↓</button>';
+                html += '      <button onclick="addOrder(\'4\')">止</button>';
+                html += '      <button onclick="delOrder()">削除</button>';
+                html += '    </p>';
+                html += '    <p class="orders">'+ chips[i]['orders'] +'</p>';
+                html += '    <p>移動後削除<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
+                var notDel = '';
+                var Del = '';
+                chips[i]['finishDelFlg'] == "true" ? Del = 'checked' : notDel = 'checked';
+                html += '    <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" '+ notDel +'>しない</input>';
+                html += '    <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" '+ Del +'>する</input>';
+                html += '    <p>追加オブジェクト</p>';
+                html += '    <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
+                html += '    <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
+                var objInfoHTML = '';
+                if (chips[i].hasOwnProperty('newMoveObj')) {
+                    //今のつめ方でつめる
+                    var objInfoHTML = '';
+                    objInfoHTML += '<p>キャラ名：' + chips[i]['newMoveObj']['charaName'] + '</p>';
+                    objInfoHTML += '<p>設定済みイベント一覧</p>';
+                    objInfoHTML += '<ul>';
+                    var evtIndex = 0;
+                    for( key in chips[i]['newMoveObj']['events'] ) {
+                        objInfoHTML += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
+                        evtIndex++;
+                    }
+                    objInfoHTML += '</ul>';
+                    var objTxt = JSON.stringify(chips[i]['newMoveObj']);
+                    objInfoHTML += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
+                }
+                html += '    <p><span class="newMoveObjInfo">'+ objInfoHTML +'</span></p>';
+                //オブジェクトセットの際は、イベント編集ウィンドウをお借りする
+                editEvent.innerHTML = html;
+                html += '  </div>';
+                //html += '</div>';
+            }
+            html += '</div>';
+            var slow = '';
+            var normal = '';
+            var fast = '';
+            drawSpeed == "9" ? slow = 'checked' : drawSpeed == "6" ? normal = 'checked' : fast = 'checked';
+            html += '<p>移動速度</p>';
+            html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="9" '+ slow +'>遅い</input>';
+            html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="6" '+ normal +'>普通</input>';
+            html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="3" '+ fast +'>速い</input>';
+            html += '<p></p>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'move\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'move\',true)">この内容でイベント登録</p>';
+            }
+            editEvent.innerHTML = html;
             break;
 
         case '拾いイベント（固定）':
@@ -1980,6 +2658,29 @@ function drawCurrentChipBorder() {
     currentMapContext.stroke() ;
 }
 
+//画面枠を描画する
+//表示キャンバス横半径
+var viewCanvasHalfWidth = (736 - 32) / 2;
+//表示キャンバス縦半径
+var viewCanvasHalfHeight = (480 - 32) / 2;
+function drawScreenBorder() {
+    ////クリックしたマップチップを枠で囲う
+    // パスをリセット
+    currentMapContext.beginPath () ;
+    // レクタングルの座標(50,50)とサイズ(75,50)を指定
+    currentMapContext.rect((colNum*mapLength)-viewCanvasHalfWidth ,(rowNum*mapLength)-viewCanvasHalfHeight , 736, 480);
+    // 塗りつぶしの色
+    //currentMapContext.fillStyle = "lime"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
+    // 塗りつぶしを実行
+    //currentMapContext.fill();
+    // 線の色
+    currentMapContext.strokeStyle = "red";
+    // 線の太さ
+    currentMapContext.lineWidth =  3;
+    // 線を描画を実行
+    currentMapContext.stroke() ;
+}
+
 //遷移先マップのポジションを取得する
 function getMousePositionOfTransition(evt) {
     var transitionX = document.getElementById('transitionX');
@@ -2331,6 +3032,75 @@ function registEventToObj(evtName, objFlg = false) {
                     break;
                 }
             }
+        break;
+        case 'move':
+
+            //★雛形を無視してかく
+
+            //マップイベントの場合
+            //保存イメージ
+            //イベントキー
+            //　チップn（チップ分）
+            //　　　x
+            //     y
+            //     order
+            //　　　削除フラグ
+            //　　　追加オブジェクト（ストリングをオブジェクトに戻す必要あり）
+            //　移動スピード
+
+            //ムーブスピード
+            var errorFlg = true;
+            var moveSpeed = document.getElementsByClassName("moveSpeed");
+            Array.from(moveSpeed).forEach(function(event) {
+                if (event.checked) errorFlg = false; //チェックされてればOK
+            });
+            if (errorFlg) {alert("移動速度を選択してください");return;}　
+
+            //ここからチップごと
+            var containerNumber = 0;
+            var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
+            Array.from(targetMoveChipContainer).forEach(function(event) {
+
+                if (containerNumber == 0) {containerNumber++;return;}
+
+                //fromX,fromY（toはいらない）
+                errorFlg = true;
+                var fromX = event.getElementsByClassName("fromX");
+                Array.from(fromX).forEach(function(event1) {
+                    if (event1.innerText != ""){
+                        errorFlg = false;
+                    }
+                });
+                var fromY = event.getElementsByClassName("fromY");
+                Array.from(fromY).forEach(function(event1) {
+                    if (event1.innerText != ""){
+                        errorFlg = false;
+                    }
+                });
+                if (errorFlg) {alert("fromを選択してください：コンテナ"+containerNumber);containerNumber++;return;}　
+
+                //orders
+                errorFlg = true;
+                var orders = event.getElementsByClassName("orders");
+                var ret = true;
+                Array.from(orders).forEach(function(event1) {
+                    if (event1.innerText == "" || event1.innerText == undefined){
+                        ret = confirm("命令がありませんがよろしいですか？：コンテナ"+containerNumber); //ただ召喚したいだけのパターンがあるから
+                    }
+                });
+                if (!ret) {containerNumber++;return;}
+
+                //finishDelFlg
+                errorFlg = true;
+                var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                Array.from(finishDelFlg).forEach(function(event1) {
+                    if (event1.checked) errorFlg = false; //チェックされてればOK
+                });
+                if (errorFlg) {alert("削除フラグを選択してください：コンテナ"+containerNumber);containerNumber++;return;}　
+
+                containerNumber++;
+            });
+            if (errorFlg) {alert("登録には進みません");return;}
         break;
         case '拾いイベント（固定）':
 
@@ -2778,6 +3548,156 @@ function registEventToObj(evtName, objFlg = false) {
                 }
             }
         break;
+        case 'move':
+            if (currentRegisteredEvent == '') {
+            // 新規の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    //保存イメージ
+                    //イベントキー
+                    //　チップn（チップ分）
+                    //　　　x
+                    //     y
+                    //     order
+                    //　　　削除フラグ
+                    //　　　追加オブジェクト（ストリングをオブジェクトに戻す必要あり）
+                    //　移動スピード
+
+                    //チップnでループする必要あり
+
+                        currentMapTip.events[evtNameKey] = new Object(); 
+        
+                        //ムーブスピード
+                        var moveSpeed = document.getElementsByClassName("moveSpeed");
+                        Array.from(moveSpeed).forEach(function(event) {
+                            if (event.checked) currentMapTip.events[evtNameKey].drawSpeed =　event.value;
+                        });
+
+                        //ここからチップごと
+                        var tmpIndex = 0;
+                        var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
+                        Array.from(targetMoveChipContainer).forEach(function(event) {
+
+                            var chipNameKey = "chip_" + tmpIndex;
+                            currentMapTip.events[evtNameKey][chipNameKey] = new Object(); 
+
+                            //fromX,fromY（toはいらない）
+                            var fromX = event.getElementsByClassName("fromX");
+                            Array.from(fromX).forEach(function(event1) {
+                                currentMapTip.events[evtNameKey][chipNameKey]['fromX'] =　event1.innerText;
+                            });
+                            var fromY = event.getElementsByClassName("fromY");
+                            Array.from(fromY).forEach(function(event1) {
+                                currentMapTip.events[evtNameKey][chipNameKey]['fromY'] =　event1.innerText;
+                            });
+
+                            //orders
+                            var orders = event.getElementsByClassName("orders");
+                            Array.from(orders).forEach(function(event1) {
+                                currentMapTip.events[evtNameKey][chipNameKey]['orders'] =　event1.innerText;
+                            });
+
+                            //finishDelFlg
+                            var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                            Array.from(finishDelFlg).forEach(function(event1) {
+                                if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
+                            });
+
+                            //追加オブジェクト
+                            var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
+                            Array.from(newMoveObjInfo).forEach(function(event1) {
+                                if (event1.innerHTML != "") {
+                                    var objTxt = event1.getElementsByClassName("objTxt");
+                                    Array.from(objTxt).forEach(function(event2) {
+                                        currentMapTip.events[evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                    });
+                                }
+                            });
+
+                            tmpIndex++;
+                        });
+
+                        delete currentMapTip.events[evtNameKey]['chip_0']; //最初のやつは削除
+
+                } else {
+                    //オブジェクトイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            currentMapTip.object.events[evtNameKey] = new Object(); 
+                            currentMapTip.object.events[evtNameKey].type = 'shake'; //shake
+                            currentMapTip.object.events[evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;          
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.object.events[evtNameKey] = new Object(); 
+                            currentMapTip.object.events[evtNameKey].type = 'reaction'; //reaction
+                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                }
+
+            } else {
+            // 既存の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            //currentMapTip.events[currentRegisteredEvent] = new Object(); 
+                            currentMapTip.events[currentRegisteredEvent].type = 'shake'; //shake
+                            currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.events[currentRegisteredEvent].type = 'reaction'; //reaction
+                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                } else {
+                    //オブジェクトイベントの場合
+                    //shake、reaction、animationの3つがある
+                    switch (currentEffectType) {
+                        case 'shake':
+                            //currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
+                            currentMapTip.object.events[currentRegisteredEvent].type = 'shake'; //shake
+                            currentMapTip.object.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;          
+                        break;
+
+                        case 'reaction':
+                            currentMapTip.object.events[currentRegisteredEvent].type = 'reaction'; //reaction
+                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                        break;
+
+                        case 'animation':
+                        break;
+                    }
+                }
+            }
+
+            //戻すよ
+            currentMoveChip = undefined;
+
+            setTargetMoveChipFlg = false;
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = '';
+            mapDataContainer.style.backgroundColor = '';
+            editEvent.innerHTML = '';
+
+        break;
+
         case '拾いイベント（固定）':
 
         break;
@@ -2843,7 +3763,7 @@ function switchCanvasSize() {
         document.getElementById('currentMapContainer').style.height = 1300 + 'px';
         isNormal = false;
     } else {
-        document.getElementById('currentMapContainer').style.width = 480 + 'px';
+        document.getElementById('currentMapContainer').style.width = 736 + 'px';
         document.getElementById('currentMapContainer').style.height = 480 + 'px';
         isNormal = true;
     }

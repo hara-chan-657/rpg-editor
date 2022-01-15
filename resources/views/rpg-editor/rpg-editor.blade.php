@@ -50,6 +50,8 @@
             </div>
             <div id="editEvent">
             </div>
+            <div id="editEvent2">
+            </div>
         </div>
         <div id="turnChipEditContainer" style="display:none;">
             <div id="currentMapChipContainer">
