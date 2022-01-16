@@ -3602,125 +3602,238 @@ function registEventToObj(evtName, objFlg = false) {
 
                     //チップnでループする必要あり
 
-                        currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtNameKey] = new Object(); 
         
-                        //ムーブスピード
-                        var moveSpeed = document.getElementsByClassName("moveSpeed");
-                        Array.from(moveSpeed).forEach(function(event) {
-                            if (event.checked) currentMapTip.events[evtNameKey].drawSpeed =　event.value;
+                    //ムーブスピード
+                    var moveSpeed = document.getElementsByClassName("moveSpeed");
+                    Array.from(moveSpeed).forEach(function(event) {
+                        if (event.checked) currentMapTip.events[evtNameKey].drawSpeed =　event.value;
+                    });
+
+                    //ここからチップごと
+                    var tmpIndex = 0;
+                    var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
+                    Array.from(targetMoveChipContainer).forEach(function(event) {
+
+                        var chipNameKey = "chip_" + tmpIndex;
+                        currentMapTip.events[evtNameKey][chipNameKey] = new Object(); 
+
+                        //fromX,fromY（toはいらない）
+                        var fromX = event.getElementsByClassName("fromX");
+                        Array.from(fromX).forEach(function(event1) {
+                            currentMapTip.events[evtNameKey][chipNameKey]['fromX'] =　event1.innerText;
+                        });
+                        var fromY = event.getElementsByClassName("fromY");
+                        Array.from(fromY).forEach(function(event1) {
+                            currentMapTip.events[evtNameKey][chipNameKey]['fromY'] =　event1.innerText;
                         });
 
-                        //ここからチップごと
-                        var tmpIndex = 0;
-                        var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
-                        Array.from(targetMoveChipContainer).forEach(function(event) {
-
-                            var chipNameKey = "chip_" + tmpIndex;
-                            currentMapTip.events[evtNameKey][chipNameKey] = new Object(); 
-
-                            //fromX,fromY（toはいらない）
-                            var fromX = event.getElementsByClassName("fromX");
-                            Array.from(fromX).forEach(function(event1) {
-                                currentMapTip.events[evtNameKey][chipNameKey]['fromX'] =　event1.innerText;
-                            });
-                            var fromY = event.getElementsByClassName("fromY");
-                            Array.from(fromY).forEach(function(event1) {
-                                currentMapTip.events[evtNameKey][chipNameKey]['fromY'] =　event1.innerText;
-                            });
-
-                            //orders
-                            var orders = event.getElementsByClassName("orders");
-                            Array.from(orders).forEach(function(event1) {
-                                currentMapTip.events[evtNameKey][chipNameKey]['orders'] =　event1.innerText;
-                            });
-
-                            //finishDelFlg
-                            var finishDelFlg = event.getElementsByClassName("finishDelFlg");
-                            Array.from(finishDelFlg).forEach(function(event1) {
-                                if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
-                            });
-
-                            //追加オブジェクト
-                            var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
-                            Array.from(newMoveObjInfo).forEach(function(event1) {
-                                if (event1.innerHTML != "") {
-                                    var objTxt = event1.getElementsByClassName("objTxt");
-                                    Array.from(objTxt).forEach(function(event2) {
-                                        currentMapTip.events[evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
-                                    });
-                                }
-                            });
-
-                            tmpIndex++;
+                        //orders
+                        var orders = event.getElementsByClassName("orders");
+                        Array.from(orders).forEach(function(event1) {
+                            currentMapTip.events[evtNameKey][chipNameKey]['orders'] =　event1.innerText;
                         });
 
-                        delete currentMapTip.events[evtNameKey]['chip_0']; //最初のやつは削除
+                        //finishDelFlg
+                        var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                        Array.from(finishDelFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
+                        });
+
+                        //追加オブジェクト
+                        var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
+                        Array.from(newMoveObjInfo).forEach(function(event1) {
+                            if (event1.innerHTML != "") {
+                                var objTxt = event1.getElementsByClassName("objTxt");
+                                Array.from(objTxt).forEach(function(event2) {
+                                    currentMapTip.events[evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                });
+                            }
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.events[evtNameKey]['chip_0']; //最初のやつは削除
 
                 } else {
-                    //オブジェクトイベントの場合
-                    //shake、reaction、animationの3つがある
-                    switch (currentEffectType) {
-                        case 'shake':
-                            currentMapTip.object.events[evtNameKey] = new Object(); 
-                            currentMapTip.object.events[evtNameKey].type = 'shake'; //shake
-                            currentMapTip.object.events[evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;          
-                        break;
+                    //新規でオブジェクトイベントの時
 
-                        case 'reaction':
-                            currentMapTip.object.events[evtNameKey] = new Object(); 
-                            currentMapTip.object.events[evtNameKey].type = 'reaction'; //reaction
-                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
-                        break;
+                    //チップnでループする必要あり
 
-                        case 'animation':
-                        break;
-                    }
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+        
+                    //ムーブスピード
+                    var moveSpeed = document.getElementsByClassName("moveSpeed");
+                    Array.from(moveSpeed).forEach(function(event) {
+                        if (event.checked) currentMapTip.object.events[evtNameKey].drawSpeed =　event.value;
+                    });
+
+                    //ここからチップごと
+                    var tmpIndex = 0;
+                    var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
+                    Array.from(targetMoveChipContainer).forEach(function(event) {
+
+                        var chipNameKey = "chip_" + tmpIndex;
+                        currentMapTip.object.events[evtNameKey][chipNameKey] = new Object(); 
+
+                        //fromX,fromY（toはいらない）
+                        var fromX = event.getElementsByClassName("fromX");
+                        Array.from(fromX).forEach(function(event1) {
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromX'] =　event1.innerText;
+                        });
+                        var fromY = event.getElementsByClassName("fromY");
+                        Array.from(fromY).forEach(function(event1) {
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromY'] =　event1.innerText;
+                        });
+
+                        //orders
+                        var orders = event.getElementsByClassName("orders");
+                        Array.from(orders).forEach(function(event1) {
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['orders'] =　event1.innerText;
+                        });
+
+                        //finishDelFlg
+                        var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                        Array.from(finishDelFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
+                        });
+
+                        //追加オブジェクト
+                        var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
+                        Array.from(newMoveObjInfo).forEach(function(event1) {
+                            if (event1.innerHTML != "") {
+                                var objTxt = event1.getElementsByClassName("objTxt");
+                                Array.from(objTxt).forEach(function(event2) {
+                                    currentMapTip.object.events[evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                });
+                            }
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.object.events[evtNameKey]['chip_0']; //最初のやつは削除
                 }
 
             } else {
             // 既存の場合
                 if (objFlg == false) {
                     //マップイベントの場合
-                    //shake、reaction、animationの3つがある
-                    switch (currentEffectType) {
-                        case 'shake':
-                            //currentMapTip.events[currentRegisteredEvent] = new Object(); 
-                            currentMapTip.events[currentRegisteredEvent].type = 'shake'; //shake
-                            currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                        break;
+                    //チップnでループする必要あり
 
-                        case 'reaction':
-                            currentMapTip.events[currentRegisteredEvent].type = 'reaction'; //reaction
-                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
-                        break;
+                    currentMapTip.events[currentRegisteredEvent] = new Object(); //既存の場合も初期化の意味で同じ処理にしておく
+        
+                    //ムーブスピード
+                    var moveSpeed = document.getElementsByClassName("moveSpeed");
+                    Array.from(moveSpeed).forEach(function(event) {
+                        if (event.checked) currentMapTip.events[currentRegisteredEvent].drawSpeed =　event.value;
+                    });
 
-                        case 'animation':
-                        break;
-                    }
+                    //ここからチップごと
+
+                    var tmpIndex = 0;
+                    var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
+                    Array.from(targetMoveChipContainer).forEach(function(event) {
+
+                        var chipNameKey = "chip_" + tmpIndex;
+                        currentMapTip.events[currentRegisteredEvent][chipNameKey] = new Object(); 
+
+                        //fromX,fromY（toはいらない）
+                        var fromX = event.getElementsByClassName("fromX");
+                        Array.from(fromX).forEach(function(event1) {
+                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['fromX'] =　event1.innerText;
+                        });
+                        var fromY = event.getElementsByClassName("fromY");
+                        Array.from(fromY).forEach(function(event1) {
+                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['fromY'] =　event1.innerText;
+                        });
+
+                        //orders
+                        var orders = event.getElementsByClassName("orders");
+                        Array.from(orders).forEach(function(event1) {
+                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['orders'] =　event1.innerText;
+                        });
+
+                        //finishDelFlg
+                        var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                        Array.from(finishDelFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
+                        });
+
+                        //追加オブジェクト
+                        var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
+                        Array.from(newMoveObjInfo).forEach(function(event1) {
+                            if (event1.innerHTML != "") {
+                                var objTxt = event1.getElementsByClassName("objTxt");
+                                Array.from(objTxt).forEach(function(event2) {
+                                    currentMapTip.events[currentRegisteredEvent][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                });
+                            }
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.events[currentRegisteredEvent]['chip_0']; //最初のやつは削除
                 } else {
-                    //オブジェクトイベントの場合
-                    //shake、reaction、animationの3つがある
-                    switch (currentEffectType) {
-                        case 'shake':
-                            //currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
-                            currentMapTip.object.events[currentRegisteredEvent].type = 'shake'; //shake
-                            currentMapTip.object.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;          
-                        break;
+                    //既存でオブジェクトイベントの時
 
-                        case 'reaction':
-                            currentMapTip.object.events[currentRegisteredEvent].type = 'reaction'; //reaction
-                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
-                        break;
+                    //チップnでループする必要あり
 
-                        case 'animation':
-                        break;
-                    }
+                    currentMapTip.object.events[currentRegisteredEvent] = new Object(); //既存の場合も初期化の意味で同じ処理にしておく
+        
+                    //ムーブスピード
+                    var moveSpeed = document.getElementsByClassName("moveSpeed");
+                    Array.from(moveSpeed).forEach(function(event) {
+                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].drawSpeed =　event.value;
+                    });
+
+                    //ここからチップごと
+                    var tmpIndex = 0;
+                    var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
+                    Array.from(targetMoveChipContainer).forEach(function(event) {
+
+                        var chipNameKey = "chip_" + tmpIndex;
+                        currentMapTip.object.events[currentRegisteredEvent][chipNameKey] = new Object(); 
+
+                        //fromX,fromY（toはいらない）
+                        var fromX = event.getElementsByClassName("fromX");
+                        Array.from(fromX).forEach(function(event1) {
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromX'] =　event1.innerText;
+                        });
+                        var fromY = event.getElementsByClassName("fromY");
+                        Array.from(fromY).forEach(function(event1) {
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromY'] =　event1.innerText;
+                        });
+
+                        //orders
+                        var orders = event.getElementsByClassName("orders");
+                        Array.from(orders).forEach(function(event1) {
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['orders'] =　event1.innerText;
+                        });
+
+                        //finishDelFlg
+                        var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                        Array.from(finishDelFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
+                        });
+
+                        //追加オブジェクト
+                        var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
+                        Array.from(newMoveObjInfo).forEach(function(event1) {
+                            if (event1.innerHTML != "") {
+                                var objTxt = event1.getElementsByClassName("objTxt");
+                                Array.from(objTxt).forEach(function(event2) {
+                                    currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                });
+                            }
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.object.events[currentRegisteredEvent]['chip_0']; //最初のやつは削除
                 }
             }
 
