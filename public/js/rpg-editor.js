@@ -890,6 +890,43 @@ function setTurnChipToData(evt) {
 
 }
 
+//BGM編集モードにする
+var editBGMContainer = document.getElementById("editBGMContainer");
+var editBGM = document.getElementById("editBGM");
+var editBGMflg = false;
+function editBgm() {
+    //汎用音楽コンテナを開く
+    if (!editBGMflg) {
+        editBGMflg = true;
+        editBGMContainer.innerHTML = getSoundLists();
+        editBGMContainer.innerHTML += '<button onClick="saveBGM()">保存する</button>'; 
+        editBGMContainer.style.display = "inline-block";
+        editBGM.style.backgroundColor = 'red';
+    } else {
+        editBGMflg = false;
+        editBGMContainer.style.display = "none";
+        editBGM.style.backgroundColor = '';
+    }
+}
+
+//BGMを保存する
+function saveBGM() {
+
+    if (document.getElementById("selectedSound").innerText == '') {
+        alert('選択してね');
+        return;
+    }
+
+    //最初だけ作成
+    if (!projectDataObj.hasOwnProperty('mapBGM')) {
+        projectDataObj['mapBGM'] = new Object();
+    }
+    projectDataObj['mapBGM'][currrentMapName] = document.getElementById("selectedSound").innerText;
+    document.getElementById("mapBGM").innerText = projectDataObj['mapBGM'][currrentMapName];
+    editBGMContainer.style.display = "none";
+    editBGM.style.backgroundColor = '';
+}
+
 
 //マップチップのデータを表示する
 //param1 : クリック時イベント情報

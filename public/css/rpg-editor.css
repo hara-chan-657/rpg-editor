@@ -172,6 +172,11 @@ p {
     display: none;
 }
 
+#editBGMContainer {
+    border: 1px solid pink;
+    display: none;
+}
+
 #registEvent {
     background-color: red;
     color: white;

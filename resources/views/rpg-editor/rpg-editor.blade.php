@@ -19,6 +19,8 @@
     <div id="mapContainer">
         <button onclick="switchCanvasSize()">キャンバス大きさ変更</button>
         <button onclick="setTurnChipMode()" id="setTurnChipMode">マップ交互編集モード</button>
+        <button onclick="editBgm()" id="editBGM">BGM編集</button>
+        <p>BGM：<span id="mapBGM"></span></p>
         <div id="setStartProjectContainer">
         </div>
         <div id="editStartPositionContainer" style="display:none">
@@ -51,6 +53,8 @@
             <div id="editEvent">
             </div>
             <div id="editEvent2">
+            </div>
+            <div id="editBGMContainer">
             </div>
         </div>
         <div id="turnChipEditContainer" style="display:none;">
