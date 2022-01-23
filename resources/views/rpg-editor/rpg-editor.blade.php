@@ -402,6 +402,111 @@
         </div>
     </div> -->
 
+    <!-- カットシーン設定用の画像コンテナ -->
+    <div id="cutScenes" style="display:;">
+        <span>↓スペシャルスキル=====================================================================</span>
+        <div id="specialSkillContainer">
+        @foreach($cutScenes as $key1 => $prjDir)
+                @if ($key1 == $project) 
+                    <div id="cutScene_{{$key1}}">
+                    <p>■■■{{$key1}}</p>
+                    @foreach($prjDir['cutScenes'] as $key2 => $cutSceneType)
+                        @if ($key2 == 'specialSkill') 
+                            @foreach($cutSceneType as $key3 => $charaDir)
+                                <p>{{$key3}}</p>
+                                @foreach($charaDir as $skillPng)
+                                    <img class="cutScene_specialSkill" onclick="selectCutSceneImage(event)" src="../../rpg-player/public/projects/{{$key1}}/cutScenes/{{$key2}}/{{$key3}}/{{$skillPng}}" id="{{$skillPng}}" alt="{{$key3}}">
+                                @endforeach
+                            @endforeach
+                        @else
+
+                        @endif
+                    @endforeach
+                    </div>
+                @elseif ($key1 == 'common')
+                    <div id="cutScene_common">
+                    <p>■■■common</p>
+                    @foreach($prjDir['cutScenes'] as $key2 => $cutSceneType)
+                        @if ($key2 == 'specialSkill') 
+                            @foreach($cutSceneType as $key3 => $charaDir)
+                                <p>{{$key3}}</p>
+                                @foreach($charaDir as $skillPng)
+                                    <img class="cutScene_specialSkill" onclick="selectCutSceneImage(event)" src="../../rpg-player/public/projects/{{$key1}}/cutScenes/{{$key2}}/{{$key3}}/{{$skillPng}}" id="{{$skillPng}}" alt="{{$key3}}">
+                                @endforeach
+                            @endforeach
+                        @else
+
+                        @endif
+                    @endforeach
+                    </div>
+                @else
+                    <div class="cutScene_other">
+                    <p>■■■other（{{$key1}}）</p>
+                    @foreach($prjDir['cutScenes'] as $key2 => $cutSceneType)
+                        @if ($key2 == 'specialSkill') 
+                            @foreach($cutSceneType as $key3 => $charaDir)
+                                <p>{{$key3}}</p>
+                                @foreach($charaDir as $skillPng)
+                                    <img class="cutScene_specialSkill" onclick="selectCutSceneImage(event)" src="../../rpg-player/public/projects/{{$key1}}/cutScenes/{{$key2}}/{{$key3}}/{{$skillPng}}" id="{{$skillPng}}" alt="{{$key3}}">
+                                @endforeach
+                            @endforeach
+                        @else
+
+                        @endif
+                    @endforeach
+                    </div>
+                @endif
+        @endforeach
+        </div>
+
+        <span>↓シーン=====================================================================</span>
+        <div id="sceneContainer">
+        @foreach($cutScenes as $key1 => $prjDir)
+                @if ($key1 == $project) 
+                    <div id="cutScene_{{$key1}}">
+                    <p>■■■{{$key1}}</p>
+                    @foreach($prjDir['cutScenes'] as $key2 => $cutSceneType)
+                        @if ($key2 == 'specialSkill') 
+
+                        @else
+                            @foreach($cutSceneType as $scenePng)
+                                <img class="cutScene_scene" onclick="selectCutSceneImage(event)" src="../../rpg-player/public/projects/{{$key1}}/cutScenes/{{$key2}}/{{$scenePng}}" id="{{$scenePng}}">
+                            @endforeach
+                        @endif
+                    @endforeach
+                    </div>
+                @elseif ($key1 == 'common')
+                    <div id="cutScene_common">
+                    <p>■■■common</p>
+                    @foreach($prjDir['cutScenes'] as $key2 => $cutSceneType)
+                        @if ($key2 == 'specialSkill') 
+
+                        @else
+                            @foreach($cutSceneType as $scenePng)
+                                <img class="cutScene_scene" onclick="selectCutSceneImage(event)" src="../../rpg-player/public/projects/{{$key1}}/cutScenes/{{$key2}}/{{$scenePng}}" id="{{$scenePng}}">
+                            @endforeach
+                        @endif
+                    @endforeach
+                    </div>
+                @else
+                    <div class="cutScene_other">
+                    <p>■■■other（{{$key1}}）</p>
+                    @foreach($prjDir['cutScenes'] as $key2 => $cutSceneType)
+                        @if ($key2 == 'specialSkill') 
+
+                        @else
+                            @foreach($cutSceneType as $scenePng)
+                                <img class="cutScene_scene" onclick="selectCutSceneImage(event)" src="../../rpg-player/public/projects/{{$key1}}/cutScenes/{{$key2}}/{{$scenePng}}" id="{{$scenePng}}">
+                            @endforeach
+                        @endif
+                    @endforeach
+                    </div>
+                @endif
+        @endforeach
+        </div>
+    </div>
+
+
     <span>↓ツール=====================================================================</span>
 
     <!-- ツール設定用のコンテナ -->
@@ -416,7 +521,7 @@
                 </tr>                
                 @foreach($tools as $tool)
                     <tr>
-                        <th><button type="button" onclick="setToolInfo({{$tool->id}})" class="tools" value="{{$tool->id}}"></button></th>
+                        <th><button type="button" onclick="setToolInfo(event, {{$tool->id}})" class="tools" value="{{$tool->id}}"></button></th>
                         <th>{{$tool->id}}</th>
                         <th>{{$tool->toolName}}</th>
                         <th>{{$tool->description}}</th>
@@ -437,7 +542,7 @@
                 <p style="background-color: orange">{{$key2}}</p>
                     @foreach($soundTypeSub as $soundFile)
                         <p>
-                            <button onclick="setSoundInfo('{{$key}}','{{$key2}}','{{$soundFile}}')">選択</button>
+                            <button onclick="setSoundInfo(event, '{{$key}}','{{$key2}}','{{$soundFile}}')">選択</button>
                             <button onclick="sound('{{$soundFile}}')">再生</button>{{$soundFile}}
                         </p>
                         <audio id="{{$soundFile}}" preload="auto">

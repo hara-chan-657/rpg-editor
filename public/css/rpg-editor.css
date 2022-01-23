@@ -283,3 +283,28 @@ margin: 0px 3px;
     float: left;
 }
 
+#targetSceneEventContainerParent {
+    /* 高さ認識用 */
+    overflow:hidden;
+}
+.targetSceneEventContainer {
+    border: 1px solid yellow;
+    float: left;
+}
+
+#cutSceneLists {
+    height: 150px;
+    width: 300px;
+    overflow: scroll;
+    border: 1px solid yellow;
+}
+
+.cutScene_specialSkill , .cutScene_scene {
+    width:30%;
+}
+
+#selectedCutScene {
+    height: 144px;
+    width: 240px;
+}
+

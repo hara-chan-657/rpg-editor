@@ -240,6 +240,42 @@ class RpgEditorController extends Controller
                 }
             }
         }
+        //カットシーン取得
+        $excludes = array(
+            '.',
+            '..',
+            '.DS_Store'
+        );
+        $i = 0; //カットシーン画像インデックス
+        $cutScenes = array();
+        //var_dump(scandir('../../rpg-player/public/projects'));
+        foreach(scandir('../../rpg-player/public/projects') AS $prjDir){
+            if (in_array($prjDir, $excludes)) continue;
+            foreach(scandir('../../rpg-player/public/projects/' . $prjDir) AS $imageTypeDir){
+                if (in_array($imageTypeDir, $excludes)) continue;
+                if ($imageTypeDir == 'cutScenes') {
+                    foreach(scandir('../../rpg-player/public/projects/' . $prjDir . '/cutScenes') AS $cutSceneTypeDir){ //シーンとスペシャルスキル
+                        if (in_array($cutSceneTypeDir, $excludes)) continue;
+                        if ($cutSceneTypeDir == 'specialSkill') {
+                            //スペシャルスキルは、１キャラに対して複数毎の画像がある
+                            foreach(scandir('../../rpg-player/public/projects/' . $prjDir . '/cutScenes/specialSkill') AS $charaDir){
+                                if (in_array($charaDir, $excludes)) continue;
+                                foreach(scandir('../../rpg-player/public/projects/' . $prjDir . '/cutScenes/specialSkill/' . $charaDir) AS $skillPng){
+                                    if (in_array($skillPng, $excludes)) continue;
+                                    $cutScenes[$prjDir]['cutScenes']['specialSkill'][$charaDir][] = $skillPng;
+                                }
+                            }
+                        } else if ($cutSceneTypeDir == 'scene') {
+                            //sceneの場合それ単体
+                            foreach(scandir('../../rpg-player/public/projects/' . $prjDir . '/cutScenes/scene') AS $scenePng){
+                                if (in_array($scenePng, $excludes)) continue;
+                                $cutScenes[$prjDir]['cutScenes']['scene'][] = $scenePng;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         //var_dump($objects);       
         return view('rpg-editor.rpg-editor',
                     [
@@ -253,7 +289,8 @@ class RpgEditorController extends Controller
                         'tools'=>$tools,
                         'turnChips'=>$turnChips,
                         'turnPassChips'=>$turnPassChips,
-                        'sounds'=>$sounds
+                        'sounds'=>$sounds,
+                        'cutScenes'=>$cutScenes
                     ]
                 );
     }

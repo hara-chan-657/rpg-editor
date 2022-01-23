@@ -45,6 +45,7 @@ var settingEvents = [
     "tool",
     "effect",
     "move",
+    "scene",
 ]
 //セット可能オブジェクト
 var settingObjects = [
@@ -846,6 +847,15 @@ function deleteSelectObjMode() {
 }
 
 
+//シーンイベントの編集コンテナを追加する
+function addSceneEventContainer() {
+    var childEle = document.getElementById("addChildEle").firstElementChild.cloneNode(true);
+    var parentDiv = document.getElementById("targetSceneEventContainerParent");
+    parentDiv.appendChild(childEle);
+    return ;
+}
+
+
 //マップ交互チップをデータにセットする
 function setTurnChipToData(evt) {
 
@@ -1375,25 +1385,6 @@ function setObject(objectName) {
         }
 }
 
-//選択したオブジェクトを、選択中オブジェクトに表示する
-function selectObjectImage(evt) {
-    var selectedObjImage = document.getElementById('selectedObjImage');
-    var selectedObjName = document.getElementById('selectedObjName');
-    // var tmp = decodeURI(evt.target.src);
-    var tmp = decodeURI(evt.target.src);
-    selectedObjImage.src = tmp;
-    selectedObjName.innerText = evt.target.alt;
-    
-}
-
-//選択したワイプを、選択中ワイプに表示する
-function selectWipeImage(evt) {
-    var selectedWipeImage = document.getElementById('selectedWipeImage');
-    var tmp = decodeURI(evt.target.src);
-    selectedWipeImage.src = tmp;
-    
-}
-
 function registObject(objectName) {
     var fullSrc = decodeURI(document.getElementById('selectedObjImage').src);
     let file_type = fullSrc.split('.').pop();
@@ -1660,24 +1651,19 @@ function setEvent(eventName, objFlg = false) {
                 if (registeredFlg) {
                     talkContent = currentMapTip.events[orgEvtName].talkContent;
                     if (currentMapTip.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = decodeURI(document.getElementById(currentMapTip.events[orgEvtName].wipe).src);
+                        wipeSrc = currentMapTip.events[orgEvtName].wipe;
                     }
                 }
             } else {
                 if (registeredFlg) {
                     talkContent = currentMapTip.object.events[orgEvtName].talkContent;
                     if (currentMapTip.object.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = decodeURI(document.getElementById(currentMapTip.object.events[orgEvtName].wipe).src);
+                        wipeSrc = currentMapTip.object.events[orgEvtName].wipe;
                     }
                 }
             }
             html += '<p>【会話】</p>';
-            html += '<p>ワイプを選択（なしでもOK）</p>';
-            html += '<p><button onclick="resetWipe()">ワイプ削除</button></p>';
-            html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
-            html += '<div class="imagesContainer">';
-            html += document.getElementById('wipeContainer').innerHTML;
-            html += '</div>';
+            html += getWipeLists(wipeSrc);
             html += '<p>会話の内容を入力</p>';
             html += '<textarea id="talk">' + talkContent + '</textarea>';
             if (objFlg == false) {
@@ -1694,24 +1680,19 @@ function setEvent(eventName, objFlg = false) {
                 if (registeredFlg) {
                     questionContent = currentMapTip.events[orgEvtName].questionContent;
                     if (currentMapTip.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = decodeURI(document.getElementById(currentMapTip.events[orgEvtName].wipe).src);
+                        wipeSrc = currentMapTip.events[orgEvtName].wipe;
                     }
                 }
             } else {
                 if (registeredFlg) {
                     questionContent = currentMapTip.object.events[orgEvtName].questionContent;
                     if (currentMapTip.object.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = decodeURI(document.getElementById(currentMapTip.object.events[orgEvtName].wipe).src);
+                        wipeSrc = currentMapTip.object.events[orgEvtName].wipe;
                     }
                 }
             }
             html += '<p>【質問】</p>';
-            html += '<p>ワイプを選択（なしでもOK）</p>';
-            html += '<p><button onclick="resetWipe()">ワイプ削除</button></p>';
-            html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
-            html += '<div class="imagesContainer">';
-            html += document.getElementById('wipeContainer').innerHTML;
-            html += '</div>';
+            html += getWipeLists(wipeSrc);
             html += '<p>質問の内容を入力</p>';
             html += '<textarea id="question">' + questionContent + '</textarea>';
             if (objFlg == false) {
@@ -1941,16 +1922,18 @@ function setEvent(eventName, objFlg = false) {
                         case 'shake':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※画面揺れの場合、揺れタイプと、音を設定</p>';
-                            html += getShakeTypeLists();
-                            html += getSoundLists();
+                            html += getShakeTypeLists(currentMapTip.events[orgEvtName].shakeType);
+                            html += getSoundLists(currentMapTip.events[orgEvtName].sound);
                             html += '</div>';
+                            currentEffectType = 'shake';
                         break;
                         case 'reaction':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
-                            html += getSoundLists();
-                            html += getReactionLists();
+                            html += getSoundLists(currentMapTip.events[orgEvtName].sound);
+                            html += getReactionLists(currentMapTip.events[orgEvtName].reactType);
                             html += '</div>';
+                            currentEffectType = 'reaction';
                         break;
                         case 'animation':
                         break;
@@ -1979,16 +1962,18 @@ function setEvent(eventName, objFlg = false) {
                         case 'shake':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※面揺れの場合、揺れタイプと、音を設定</p>';
-                            html += getShakeTypeLists();
-                            html += getSoundLists();
+                            html += getShakeTypeLists(currentMapTip.object.events[orgEvtName].shakeType);
+                            html += getSoundLists(currentMapTip.object.events[orgEvtName].sound);
                             html += '</div>';
+                            currentEffectType = 'shake';
                         break;
                         case 'reaction':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
-                            html += getSoundLists();
-                            html += getReactionLists();
+                            html += getSoundLists(currentMapTip.object.events[orgEvtName].sound);
+                            html += getReactionLists(currentMapTip.object.events[orgEvtName].reactType);
                             html += '</div>';
+                            currentEffectType = 'reaction';
                         break;
                         case 'animation':
                         break;
@@ -2000,43 +1985,6 @@ function setEvent(eventName, objFlg = false) {
 
             //htmlを反映
             editEvent.innerHTML = html;
-
-            //既存の設定があれば、ここで表示（本当は↑htmlを反映の前にやりたかったけど、しょうがなくここで）
-            if (registeredFlg) {
-                if (objFlg == false) {
-                    //エフェクトのタイプを取得
-                    switch(effectType){
-                        case 'shake':
-                            document.getElementById("selectedSound").innerText = currentMapTip.events[orgEvtName].sound;
-                            document.getElementById("selectedShakeType").innerText = currentMapTip.events[orgEvtName].shakeType;
-                            currentEffectType = 'shake';
-                        break;
-                        case 'reaction':
-                            document.getElementById("selectedSound").innerText = currentMapTip.events[orgEvtName].sound;
-                            document.getElementById("selectedReaction").innerText = currentMapTip.events[orgEvtName].reactType;
-                            currentEffectType = 'reaction';
-                        break;
-                        case 'animation':
-                        break;
-                    }
-                } else {
-                    //エフェクトのタイプを取得
-                    switch(effectType){
-                        case 'shake':
-                            document.getElementById("selectedSound").innerText = currentMapTip.object.events[orgEvtName].sound;
-                            document.getElementById("selectedShakeType").innerText = currentMapTip.object.events[orgEvtName].shakeType;
-                            currentEffectType = 'shake';
-                        break;
-                        case 'reaction':
-                            document.getElementById("selectedSound").innerText = currentMapTip.object.events[orgEvtName].sound;
-                            document.getElementById("selectedReaction").innerText = currentMapTip.object.events[orgEvtName].reactType;
-                            currentEffectType = 'reaction';
-                        break;
-                        case 'animation':
-                        break;
-                    }
-                }
-            }
             break;
 
         case 'move':
@@ -2194,6 +2142,81 @@ function setEvent(eventName, objFlg = false) {
             editEvent.innerHTML = html;
             break;
 
+        case 'scene':
+            //カットシーン
+            //トーク（複数）
+            //エフェクト（ズビシッみたいな）
+
+            //情報取得
+            var cutSceneSrc = '';
+            var sceneEvts = [];
+            var sceneEvtIndex = 1;
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    while(currentMapTip.events[orgEvtName].hasOwnProperty('sceneEvt_'+sceneEvtIndex)) {
+                        sceneEvts.push(currentMapTip.events[orgEvtName]['sceneEvt_'+sceneEvtIndex]);
+                        cutSceneSrc = currentMapTip.events[orgEvtName]['cutSceneSrc'];
+                        sceneEvtIndex++;
+                    }
+                }
+            } else {
+                if (registeredFlg) {
+                    while(currentMapTip.object.events[orgEvtName].hasOwnProperty('sceneEvt_'+sceneEvtIndex)) {
+                        sceneEvts.push(currentMapTip.object.events[orgEvtName]['sceneEvt_'+sceneEvtIndex]);
+                        cutSceneSrc = currentMapTip.object.events[orgEvtName]['cutSceneSrc'];
+                        sceneEvtIndex++;
+                    }
+                }
+            }
+
+            //これは追加用の0番目のコンテナ（見えない）
+            html += '<p>【シーン】</p>';
+            html += getCutSceneLists(cutSceneSrc);//一応シーンもスペシャルスキルも全部選択肢に入れる。カットシーンで必殺技のイメージを使いたいケースも考えられるから。
+            // html += '<button onclick="quitAddTargetMoveChip()">やめる</button>';
+            html += '<button onclick="addSceneEventContainer()">追加する</button>';
+            html += '<button onclick="deleteSceneEventContainer()">削除する</button>';
+            html += '<div id="targetSceneEventContainerParent">';
+            html += '  <div id="addChildEle" style="display:none">';
+            html += '    <div class="targetSceneEventContainer">';
+            html +=        getWipeLists();
+            html += '      <p>会話の内容を入力</p>';
+            html += '      <textarea id="talk" class="talkContent"></textarea>';
+            html += '      <p>エフェクトを選択</p>';
+            html +=        getShakeTypeLists();
+            html +=        getSoundLists();
+            html += '    </div>';
+            html += '  </div>';
+            //設定済みのシーンイベントを格納
+            for (var i=0; i<sceneEvts.length; i++) {
+                html += '  <div class="targetSceneEventContainer">';
+                html +=      getWipeLists(sceneEvts[i].wipeSrc);
+                html += '    <p>会話の内容を入力</p>';
+                if (sceneEvts[i].hasOwnProperty("talkContent")){
+                    html += '<textarea id="talk" class="talkContent">' + sceneEvts[i].talkContent + '</textarea>'; //あれば
+                } else {
+                    html += '<textarea id="talk" class="talkContent"></textarea>';
+                }                
+                html += '    <p>エフェクトを選択</p>';
+                if (sceneEvts[i].hasOwnProperty("shakeType")){
+                    html += getShakeTypeLists(sceneEvts[i].shakeType); //あれば
+                } else {
+                    html += getShakeTypeLists();
+                }
+                if (sceneEvts[i].hasOwnProperty("sound")) {
+                    html += getSoundLists(sceneEvts[i].sound); //あれば
+                } else {
+                    html += getSoundLists();
+                }
+                html += '  </div>';
+            }
+            html += '</div>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'scene\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'scene\',true)">この内容でイベント登録</p>';
+            }
+            editEvent.innerHTML = html;
+            break;
         case '拾いイベント（固定）':
             html += '<p>【拾いイベント（固定）】</p>';
             var imgName = currentMapTip.object.imgName;
@@ -2233,8 +2256,24 @@ function setEvent(eventName, objFlg = false) {
 }
 
 //選択中ワイプ画像をリセット
-function resetWipe() {
-    document.getElementById('selectedWipeImage').src = '';
+function resetWipe(evt) {
+    evt.target.nextElementSibling.nextElementSibling.src = '';
+}
+
+function resetCutScene(evt) {
+    evt.target.nextElementSibling.nextElementSibling.src = '';
+}
+
+function resetSound(evt) {
+    evt.target.nextElementSibling.nextElementSibling.innerText = '';
+}
+
+function resetShakeType(evt) {
+    evt.target.nextElementSibling.nextElementSibling.innerText = '';
+}
+
+function resetReaction(evt) {
+    evt.target.nextElementSibling.nextElementSibling.innerText = '';
 }
 
 var currentEffectType = '';
@@ -2280,11 +2319,27 @@ function setEffectEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg
     currentEffectType = type;
 }
 
+//////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）start
+function getWipeLists(wipeSrc = '') {
+    var html = "";
+    if (wipeSrc != '') wipeSrc = decodeURI(document.getElementById(wipeSrc).src);
+    html += '<p>ワイプを選択（なしでもOK）</p>';
+    html += '<button onclick="resetWipe(event)">ワイプ削除</button>';
+    html += '<p>選択中のワイプ</p>';
+    html += '<img id="selectedWipeImage" class="selectedWipeImage" src="' + wipeSrc + '"></img>';
+    html += '<div class="imagesContainer">';
+    html += document.getElementById('wipeContainer').innerHTML;
+    html += '</div>';
+    return html;
+}
+
 
 //rpg-playerの、public/sounds以下の音源を取得
-function getSoundLists() {
+function getSoundLists(selectedSound = '') {
     var html = "";
-    html =  '<p id="selectedSound" style="color: blue"></p>';
+    html += '<button onclick="resetSound(event)">サウンド削除</button>';
+    html += '<p>選択中のサウンド</p>';
+    html += '<p id="selectedSound" class="selectedSound" style="color: blue">' + selectedSound + '</p>';
     html += '<div id="soundLists">';
     html += document.getElementById("soundContainer").innerHTML;
     html += '</div>';
@@ -2292,48 +2347,97 @@ function getSoundLists() {
 }
 
 //揺れタイプの一覧を返却
-function getShakeTypeLists() {
+function getShakeTypeLists(selectedShakeType = '') {
     var html = "";
-    html =  '<p id="selectedShakeType" style="color: blue"></p>';
+    html += '<button onclick="resetShakeType(event)">揺れタイプ削除</button>';
+    html += '<p>選択中の揺れタイプ</p>';
+    html += '<p id="selectedShakeType" class="selectedShakeType" style="color: blue">' + selectedShakeType + '</p>';
     html += '<div id="shakeTypeLists">';
     html += '<ul>';
-    html += '<li onclick="setShakeTypeInfo(\'v\')">縦揺れ</li>';
-    html += '<li onclick="setShakeTypeInfo(\'h\')">横揺れ</li>';
+    html += '<li onclick="setShakeTypeInfo(event, \'v\')">縦揺れ</li>';
+    html += '<li onclick="setShakeTypeInfo(event, \'h\')">横揺れ</li>';
     html += '</ul>';
     html += '</div>';
     return html;
 }
 
 //リアクションの一覧を返却
-function getReactionLists() {
+function getReactionLists(selectedReaction = '') {
     var html = "";
-    html =  '<p id="selectedReaction" style="color: blue"></p>';
+    html += '<button onclick="resetReaction(event)">リアクション削除</button>';
+    html += '<p>選択中のリアクション</p>';
+    html += '<p id="selectedReaction" class="selectedReaction" style="color: blue">' + selectedReaction + '</p>';
     html += '<div id="reactionLists">';
     html += '<ul>';
-    html += '<li onclick="setReactionInfo(\'びっくり\')">びっくり</li>';
-    html += '<li onclick="setReactionInfo(\'ハート\')">ハート</li>';
-    html += '<li onclick="setReactionInfo(\'いかり\')">いかり</li>';
-    html += '<li onclick="setReactionInfo(\'汗\')">汗</li>';
+    html += '<li onclick="setReactionInfo(event, \'びっくり\')">びっくり</li>';
+    html += '<li onclick="setReactionInfo(event, \'ハート\')">ハート</li>';
+    html += '<li onclick="setReactionInfo(event, \'いかり\')">いかり</li>';
+    html += '<li onclick="setReactionInfo(event, \'汗\')">汗</li>';
     html += '</ul>';
     html += '</div>';
     return html;   
 }
 
 
+function getCutSceneLists(cutSceneSrc = '') {
+    var html = "";
+    if (cutSceneSrc != '') cutSceneSrc = decodeURI(document.getElementById(cutSceneSrc).src);
+    html += '<button onclick="resetCutScene(event)">カットシーン削除</button>';
+    html += '<p>選択中のカットシーン</p>';
+    html += '<img id="selectedCutScene" class="selectedCutScene" src="' + cutSceneSrc + '"></img>';
+    html += '<div id="cutSceneLists">';
+    html += document.getElementById("cutScenes").innerHTML; //シーンもスペシャルスキルも包括しているコンテナであることに注意
+    html += '</div>';
+    return html;
+}
+
+//選択したオブジェクトを、選択中オブジェクトに表示する
+function selectObjectImage(evt) {
+    var selectedObjImage = document.getElementById('selectedObjImage');
+    var selectedObjName = document.getElementById('selectedObjName');
+    // var tmp = decodeURI(evt.target.src);
+    var tmp = decodeURI(evt.target.src);
+    selectedObjImage.src = tmp;
+    selectedObjName.innerText = evt.target.alt;
+    
+}
+
+//////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）kugiri
+//選択したワイプを、選択中ワイプに表示する
+function selectWipeImage(evt) {
+    var selectedWipeImage = evt.target.parentNode.parentNode.previousElementSibling;
+    var tmp = decodeURI(evt.target.src);
+    selectedWipeImage.src = tmp;
+    
+}
+
 //サウンド情報をセット
-function setSoundInfo(type, sub, file) {
-    document.getElementById("selectedSound").innerText = type + '/' + sub + '/' + file;
+function setSoundInfo(evt, type, sub, file) {
+    var selectedSound = evt.target.parentNode.parentNode.previousElementSibling;
+    selectedSound.innerText = type + '/' + sub + '/' + file;
 }
 
 //揺れタイプ情報をセット
-function setShakeTypeInfo(type) {
-    document.getElementById("selectedShakeType").innerText = type;
+function setShakeTypeInfo(evt, type) {
+    var selectedShakeType = evt.target.parentNode.parentNode.previousElementSibling;
+    selectedShakeType.innerText = type;
 }
 
 //リアクション情報をセット
-function setReactionInfo(type) {
-    document.getElementById("selectedReaction").innerText = type;
+function setReactionInfo(evt, type) {
+    var selectedReaction = evt.target.parentNode.parentNode.previousElementSibling;
+    selectedReaction.innerText = type;
 }
+
+//カットシーン情報をセット
+function selectCutSceneImage(evt) {
+    var selectedCutScene = evt.target.parentNode.parentNode.parentNode.previousElementSibling;
+    var tmp = decodeURI(evt.target.src);
+    selectedCutScene.src = tmp;
+}
+
+//////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）end
+
 
 function sound(soundId) {
     document.getElementById(soundId).currentTime = 0;
@@ -2413,7 +2517,7 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
                     delToolFlg = currentMapTip.events[evtNameKey].delToolFlg;
                     if (currentMapTip.events[evtNameKey].hasOwnProperty('wipe')) {
                         var wipe = currentMapTip.events[evtNameKey].wipe;
-                        wipeSrc = decodeURI(document.getElementById(currentMapTip.events[evtNameKey].wipe).src);
+                        wipeSrc = currentMapTip.events[evtNameKey].wipe;
                     }
                 } else {
                     toolId = currentMapTip.object.events[evtNameKey].toolId;
@@ -2422,7 +2526,7 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
                     delToolFlg = currentMapTip.object.events[evtNameKey].delToolFlg;
                     if (currentMapTip.object.events[evtNameKey].hasOwnProperty('wipe')) {
                         var wipe = currentMapTip.object.events[evtNameKey].wipe;
-                        wipeSrc = decodeURI(document.getElementById(currentMapTip.object.events[evtNameKey].wipe).src);
+                        wipeSrc = currentMapTip.object.events[evtNameKey].wipe;
                     }
                 }
 
@@ -2440,12 +2544,7 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
                 html += '<select id="delToolFlg" onChange=""><option value="0">使用後に削除しない</option><option value="1" selected>使用後に削除する</option></select>';
             }
             //var wipeSrc = '';
-            html += '<p>ワイプを選択（なしでもOK）</p>';
-            html += '<p><button onclick="resetWipe()">ワイプ削除</button></p>';
-            html += '<span>選択中のワイプ</span><img id="selectedWipeImage" src="' + wipeSrc + '"></img>';
-            html += '<div class="imagesContainer">';
-            html += document.getElementById('wipeContainer').innerHTML;
-            html += '</div>';
+            html += getWipeLists(wipeSrc);
             ToolEventContainer.innerHTML = html;
             ToolEventContainer.style.display = 'inline-block';
 
@@ -3138,6 +3237,19 @@ function registEventToObj(evtName, objFlg = false) {
                 containerNumber++;
             });
             if (errorFlg) {alert("登録には進みません");return;}
+        break;
+        case 'scene':
+            //カットシーンがあるかないかだけ確認
+            var selectedCutScene = document.getElementById("selectedCutScene");
+            var fullSrc = decodeURI(selectedCutScene.src);
+            var imgName = fullSrc.split("/").reverse()[0]
+            if (imgName == 'getProjectData') {
+                //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
+                //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
+                alert("カットシーンを選択してください");
+                return;
+            }
+
         break;
         case '拾いイベント（固定）':
 
@@ -3847,7 +3959,236 @@ function registEventToObj(evtName, objFlg = false) {
             editEvent.innerHTML = '';
 
         break;
+        case 'scene':
+            if (currentRegisteredEvent == '') {
+            // 新規の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    //保存イメージ
+                    //イベントキー
+                    //　シーンイベントn（シーンイベント分）
+                    //　　　wipeSrc(※getProjectDataの場合何もしないのに注意！)
+                    //     talkContent
+                    //     shakeType
+                    //　　　sound
+                    //　カットシーン
 
+                    //シーンイベントnでループする必要あり
+
+                    currentMapTip.events[evtNameKey] = new Object(); 
+        
+                    //カットシーン
+                    var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
+                    var imgName = fullSrc.split("/").reverse()[0];
+                    currentMapTip.events[evtNameKey]['cutSceneSrc'] = imgName;
+
+                    //ここからシーンイベントごと
+                    var tmpIndex = 0;
+                    var targetSceneEventContainer = document.getElementsByClassName("targetSceneEventContainer");
+                    Array.from(targetSceneEventContainer).forEach(function(event) {
+
+                        var sceneEvtKey = "sceneEvt_" + tmpIndex;
+                        currentMapTip.events[evtNameKey][sceneEvtKey] = new Object(); 
+
+                        //wipeSrc(※getProjectDataの場合何もしないのに注意！)
+                        var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
+                        Array.from(selectedWipeImage).forEach(function(event1) {
+                            var fullSrc = decodeURI(event1.src);
+                            var imgName = fullSrc.split("/").reverse()[0];
+                            if (imgName != 'getProjectData') currentMapTip.events[evtNameKey][sceneEvtKey]['wipeSrc'] = imgName;
+                        });
+
+                        //talkContent
+                        var talkContent = event.getElementsByClassName("talkContent");
+                        Array.from(talkContent).forEach(function(event1) {
+                            currentMapTip.events[evtNameKey][sceneEvtKey]['talkContent'] =　event1.value;
+                        });
+
+                        //shakeType
+                        var selectedShakeType = event.getElementsByClassName("selectedShakeType");
+                        Array.from(selectedShakeType).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.events[evtNameKey][sceneEvtKey]['shakeType'] =　event1.innerText;
+                        });
+
+                        //sound
+                        var selectedSound = event.getElementsByClassName("selectedSound");
+                        Array.from(selectedSound).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.events[evtNameKey][sceneEvtKey]['sound'] =　event1.innerText;
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.events[evtNameKey]['sceneEvt_0']; //最初のやつは削除
+
+                } else {
+                    //新規でオブジェクトイベントの時
+
+                    //シーンイベントnでループする必要あり
+
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+        
+                    //カットシーン
+                    var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
+                    var imgName = fullSrc.split("/").reverse()[0];
+                    currentMapTip.object.events[evtNameKey]['cutSceneSrc'] = imgName;
+
+                    //ここからシーンイベントごと
+                    var tmpIndex = 0;
+                    var targetSceneEventContainer = document.getElementsByClassName("targetSceneEventContainer");
+                    Array.from(targetSceneEventContainer).forEach(function(event) {
+
+                        var sceneEvtKey = "sceneEvt_" + tmpIndex;
+                        currentMapTip.object.events[evtNameKey][sceneEvtKey] = new Object(); 
+
+                        //wipeSrc(※getProjectDataの場合何もしないのに注意！)
+                        var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
+                        Array.from(selectedWipeImage).forEach(function(event1) {
+                            var fullSrc = decodeURI(event1.src);
+                            var imgName = fullSrc.split("/").reverse()[0]
+                            if (imgName != 'getProjectData') currentMapTip.object.events[evtNameKey][sceneEvtKey]['wipeSrc'] =　imgName;
+                        });
+
+                        //talkContent
+                        var talkContent = event.getElementsByClassName("talkContent");
+                        Array.from(talkContent).forEach(function(event1) {
+                            currentMapTip.object.events[evtNameKey][sceneEvtKey]['talkContent'] =　event1.value;
+                        });
+
+                        //shakeType
+                        var selectedShakeType = event.getElementsByClassName("selectedShakeType");
+                        Array.from(selectedShakeType).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.object.events[evtNameKey][sceneEvtKey]['shakeType'] =　event1.innerText;
+                        });
+
+                        //sound
+                        var selectedSound = event.getElementsByClassName("selectedSound");
+                        Array.from(selectedSound).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.object.events[evtNameKey][sceneEvtKey]['sound'] =　event1.innerText;
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.object.events[evtNameKey]['sceneEvt_0']; //最初のやつは削除
+
+                }
+
+            } else {
+            // 既存の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    //保存イメージ
+                    //イベントキー
+                    //　シーンイベントn（シーンイベント分）
+                    //　　　wipeSrc(※getProjectDataの場合何もしないのに注意！)
+                    //     talkContent
+                    //     shakeType
+                    //　　　sound
+                    //　カットシーン
+
+                    //シーンイベントnでループする必要あり
+
+                    currentMapTip.events[currentRegisteredEvent] = new Object(); 
+        
+                    //カットシーン
+                    var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
+                    var imgName = fullSrc.split("/").reverse()[0];
+                    currentMapTip.events[currentRegisteredEvent]['cutSceneSrc'] = imgName;
+
+                    //ここからシーンイベントごと
+                    var tmpIndex = 0;
+                    var targetSceneEventContainer = document.getElementsByClassName("targetSceneEventContainer");
+                    Array.from(targetSceneEventContainer).forEach(function(event) {
+
+                        var sceneEvtKey = "sceneEvt_" + tmpIndex;
+                        currentMapTip.events[currentRegisteredEvent][sceneEvtKey] = new Object(); 
+
+                        //wipeSrc(※getProjectDataの場合何もしないのに注意！)
+                        var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
+                        Array.from(selectedWipeImage).forEach(function(event1) {
+                            var fullSrc = decodeURI(event1.src);
+                            var imgName = fullSrc.split("/").reverse()[0]
+                            if (imgName != 'getProjectData') currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['wipeSrc'] =　imgName;
+                        });
+
+                        //talkContent
+                        var talkContent = event.getElementsByClassName("talkContent");
+                        Array.from(talkContent).forEach(function(event1) {
+                            currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['talkContent'] =　event1.value;
+                        });
+
+                        //shakeType
+                        var selectedShakeType = event.getElementsByClassName("selectedShakeType");
+                        Array.from(selectedShakeType).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['shakeType'] =　event1.innerText;
+                        });
+
+                        //sound
+                        var selectedSound = event.getElementsByClassName("selectedSound");
+                        Array.from(selectedSound).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['sound'] =　event1.innerText;
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.events[currentRegisteredEvent]['sceneEvt_0']; //最初のやつは削除
+
+                } else {
+                    //新規でオブジェクトイベントの時
+
+                    //シーンイベントnでループする必要あり
+
+                    currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
+        
+                    //カットシーン
+                    var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
+                    var imgName = fullSrc.split("/").reverse()[0];
+                    currentMapTip.object.events[currentRegisteredEvent]['cutSceneSrc'] = imgName;
+
+                    //ここからシーンイベントごと
+                    var tmpIndex = 0;
+                    var targetSceneEventContainer = document.getElementsByClassName("targetSceneEventContainer");
+                    Array.from(targetSceneEventContainer).forEach(function(event) {
+
+                        var sceneEvtKey = "sceneEvt_" + tmpIndex;
+                        currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey] = new Object(); 
+
+                        //wipeSrc(※getProjectDataの場合何もしないのに注意！)
+                        var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
+                        Array.from(selectedWipeImage).forEach(function(event1) {
+                            var fullSrc = decodeURI(event1.src);
+                            var imgName = fullSrc.split("/").reverse()[0]
+                            if (imgName != 'getProjectData') currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['wipeSrc'] =　imgName;
+                        });
+
+                        //talkContent
+                        var talkContent = event.getElementsByClassName("talkContent");
+                        Array.from(talkContent).forEach(function(event1) {
+                            currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['talkContent'] =　event1.value;
+                        });
+
+                        //shakeType
+                        var selectedShakeType = event.getElementsByClassName("selectedShakeType");
+                        Array.from(selectedShakeType).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['shakeType'] =　event1.innerText;
+                        });
+
+                        //sound
+                        var selectedSound = event.getElementsByClassName("selectedSound");
+                        Array.from(selectedSound).forEach(function(event1) {
+                            if (event1.innerText != '') currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['sound'] =　event1.innerText;
+                        });
+
+                        tmpIndex++;
+                    });
+
+                    delete currentMapTip.object.events[currentRegisteredEvent]['sceneEvt_0']; //最初のやつは削除
+
+                }
+            }
+        break;
         case '拾いイベント（固定）':
 
         break;
