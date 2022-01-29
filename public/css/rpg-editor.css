@@ -1,12 +1,21 @@
 p {
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+ol {
+    margin-top: 2px;
+    margin-bottom: 2px;
+    background-color: lightgray;
+    margin-left:5px;
+    margin-right:5px;
 }
 
 #mapContainer {
     padding: 10px;
     overflow: hidden;
     background-image:url("../image/background.png");
+    border:1px solid green;
 }
 
 #setStartProject {
@@ -118,11 +127,12 @@ p {
     background-color: red;
     color: white;
     border-radius: 30px;
-    padding: 0px;
+    padding: 1px;
     margin:0px;
     /*width: 130px;*/
     cursor: pointer;
     text-align: center;
+    font-size: 12px;
 }
 
 .changeEventOrder {
@@ -162,6 +172,19 @@ p {
     text-align: center;
 }
 
+#mapEvent {
+    border: 1px solid green;
+    margin: 2px 2px 2px 2px;
+    background-color: white;
+
+}
+
+#mapObject {
+    border: 1px solid green;
+    margin: 2px 2px 2px 2px;
+    background-color: white;    
+}
+
 #editEvent {
     border: 1px solid green;
     display: none;
@@ -177,15 +200,16 @@ p {
     display: none;
 }
 
-#registEvent {
+#registEvent, #registObject {
     background-color: red;
     color: white;
     border-radius: 30px;
-    padding: 0px;
+    padding: 3px;
     margin:0px;
     width: 130px;
     cursor: pointer;
     text-align: center;
+    font-size: 10px;
 }
 
 #projectsContainer {

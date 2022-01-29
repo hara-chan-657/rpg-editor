@@ -793,13 +793,13 @@ function showSelectedNewMoveObjInfo(evt) {
             var html = '';
             html += '<p>キャラ名：' + tmpCurrentMapTip.object.charaName + '</p>';
             html += '<p>設定済みイベント一覧</p>';
-            html += '<ul>';
+            html += '<ol>';
             var evtIndex = 0;
             for( key in tmpCurrentMapTip.object.events ) {
                 html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
                 evtIndex++;
             }
-            html += '</ul>';
+            html += '</ol>';
             var objTxt = JSON.stringify(tmpCurrentMapTip.object);
             html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
             event1.innerHTML += html; //+=なのに注意。クリーチャーオブジェクトの場合、クリーチャーであることを直前のタグで表示しないと分かりづらいため。
@@ -1260,9 +1260,10 @@ function updateMapEventHTML() {
         var objName = currentMapTip.object.objName;
         var imgName = currentMapTip.object.imgName;
         var img = document.getElementById(imgName);
-        mapObject.innerHTML = '<p>オブジェクト名：' + objName + '</p>';
+        mapObject.innerHTML = '<p style="background-color: yellow;">==オブジェクト情報==</p>';
+        mapObject.innerHTML += '<p>オブジェクト名：' + objName + '</p>';
         mapObject.innerHTML += '<img src="' + decodeURI(img.src) +'"></img>';
-        mapObject.innerHTML += '<p id="deleteObject" onclick="deleteObject()">オブジェクトを削除する※注意</p>';
+        mapObject.innerHTML += '<span id="deleteObject" onclick="deleteObject()">オブジェクトを削除する※注意</span>';
         if (objName == 'tool') {
             //拾いイベントだけ
             mapObject.innerHTML += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
@@ -1340,7 +1341,6 @@ function setObject(objectName) {
         //イベント一覧を更新
         //updateMapEventHTML();
         var html = '';
-        //var objName = currentMapTip.object.objName;
         html += '<p>オブジェクトタイプ：' + objectName + '</p>';
         html += '<p>オブジェクト名：<span id="selectedObjName"></span></p>';
         html += '<span>選択中のオブジェクト</span><img id="selectedObjImage" src=""></img>';
@@ -1365,7 +1365,7 @@ function setObject(objectName) {
             html += '</div>'
         } else {
         }
-        html += '<p onclick="registObject(\'' + objectName + '\')">オブジェクトを登録する</p>';
+        html += '<p id="registObject" onclick="registObject(\'' + objectName + '\')">オブジェクトを登録する</p>';
         //オブジェクトセットの際は、イベント編集ウィンドウをお借りする
         editEvent.innerHTML = html;
         editEvent.style.display = 'inline-block';
@@ -1455,23 +1455,24 @@ function saveTriggerToObj() {
 
 //現在マップチップのイベントを表示
 function showMapTipEvents(objFlg = false) {
-    var html = '<p>設定済みイベント一覧</p>';
+    var html = '<p style="background-color: yellow;">==マップ情報==</p>';
+    html += '<p>設定済みイベント一覧</p>';
     html += '<p style="color:red">※Transitionは最後に設定してください</p>';
-    html += '<ul>';
+    html += '<ol>';
     var evtIndex = 0;
     if (objFlg == false) {
         for( key in currentMapTip.events ) {
             html += '<li class="registerdEvents" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\')">' + key + '</li>';
             evtIndex++;
         }
-        html += '</ul>';
+        html += '</ol>';
         mapEvent.innerHTML = html;
     } else {
         for( key in currentMapTip.object.events ) {
             html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>';
             evtIndex++;
         }
-        html += '</ul>';
+        html += '</ol>';
         mapObject.innerHTML += html; //+=なのに注意。クリーチャーオブジェクトの場合、クリーチャーであることを直前のタグで表示しないと分かりづらいため。
     }
 }
@@ -2108,13 +2109,13 @@ function setEvent(eventName, objFlg = false) {
                     var objInfoHTML = '';
                     objInfoHTML += '<p>キャラ名：' + chips[i]['newMoveObj']['charaName'] + '</p>';
                     objInfoHTML += '<p>設定済みイベント一覧</p>';
-                    objInfoHTML += '<ul>';
+                    objInfoHTML += '<ol>';
                     var evtIndex = 0;
                     for( key in chips[i]['newMoveObj']['events'] ) {
                         objInfoHTML += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
                         evtIndex++;
                     }
-                    objInfoHTML += '</ul>';
+                    objInfoHTML += '</ol>';
                     var objTxt = JSON.stringify(chips[i]['newMoveObj']);
                     objInfoHTML += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
                 }
@@ -2353,10 +2354,10 @@ function getShakeTypeLists(selectedShakeType = '') {
     html += '<p>選択中の揺れタイプ</p>';
     html += '<p id="selectedShakeType" class="selectedShakeType" style="color: blue">' + selectedShakeType + '</p>';
     html += '<div id="shakeTypeLists">';
-    html += '<ul>';
+    html += '<ol>';
     html += '<li onclick="setShakeTypeInfo(event, \'v\')">縦揺れ</li>';
     html += '<li onclick="setShakeTypeInfo(event, \'h\')">横揺れ</li>';
-    html += '</ul>';
+    html += '</ol>';
     html += '</div>';
     return html;
 }
@@ -2368,12 +2369,12 @@ function getReactionLists(selectedReaction = '') {
     html += '<p>選択中のリアクション</p>';
     html += '<p id="selectedReaction" class="selectedReaction" style="color: blue">' + selectedReaction + '</p>';
     html += '<div id="reactionLists">';
-    html += '<ul>';
+    html += '<ol>';
     html += '<li onclick="setReactionInfo(event, \'びっくり\')">びっくり</li>';
     html += '<li onclick="setReactionInfo(event, \'ハート\')">ハート</li>';
     html += '<li onclick="setReactionInfo(event, \'いかり\')">いかり</li>';
     html += '<li onclick="setReactionInfo(event, \'汗\')">汗</li>';
-    html += '</ul>';
+    html += '</ol>';
     html += '</div>';
     return html;   
 }
@@ -2577,7 +2578,7 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
 
 }
 
-function setToolInfo(toolId) {
+function setToolInfo(evt, toolId) {
     //currentMapTip.object.toolId = toolId;
     var tableElement = document.getElementById('selectToolContainer');
     var toolsElement = tableElement.getElementsByClassName('tools');

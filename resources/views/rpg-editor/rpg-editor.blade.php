@@ -158,6 +158,7 @@
     </form>
 
     <!-- バトルイベント使用のキャラクターたち（hidden） -->
+    <div id="allItemContainer" style="display:none;">
     <div id="characters" style="display:;">
         <span>↓バトルイベントキャラ===</span>
         @foreach($characters as $character)
@@ -553,6 +554,7 @@
                 @endforeach  
             @endforeach
         </div>
+    </div>
     </div>
 
 <script src="{{ asset('/js/rpg-editor.js') }}"></script>
