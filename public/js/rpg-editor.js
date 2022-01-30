@@ -126,6 +126,7 @@ currentMapCanvas.addEventListener('click', function(evt) {
         showMapTipData(evt);
     }
 }, false);
+currentMapCanvas.addEventListener('mousemove', function (evt) {showCursorPos(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
 // for (var i=0; i<objCharas.length; i++) {
 //     objCharas[i].addEventListener('click', function(evt) {selectObjectImage(evt);}, false);
@@ -937,6 +938,20 @@ function saveBGM() {
     editBGM.style.backgroundColor = '';
 }
 
+//カーソル位置を表示
+var cursorPos = document.getElementById("cursorPos");
+function showCursorPos(evt) {
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+    var x = mousePos.x;
+    var y = mousePos.y;
+
+    var tmpPositionX = Math.floor(x/mapLength);
+    var tmpPositionY = Math.floor(y/mapLength);
+
+    cursorPos.innerText = tmpPositionX + "：" + tmpPositionY;
+
+}
 
 //マップチップのデータを表示する
 //param1 : クリック時イベント情報

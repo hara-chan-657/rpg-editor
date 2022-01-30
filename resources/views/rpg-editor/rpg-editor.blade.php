@@ -21,6 +21,7 @@
         <button onclick="setTurnChipMode()" id="setTurnChipMode">マップ交互編集モード</button>
         <button onclick="editBgm()" id="editBGM">BGM編集</button>
         <p>BGM：<span id="mapBGM"></span></p>
+        <p>カーソル位置（<span id="cursorPos"></span>）</p>
         <div id="setStartProjectContainer">
         </div>
         <div id="editStartPositionContainer" style="display:none">
