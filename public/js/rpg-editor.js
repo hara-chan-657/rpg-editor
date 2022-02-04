@@ -3320,6 +3320,12 @@ function registEventToObj(evtName, objFlg = false) {
             }
 
         break;
+        case 'changeMainChara':
+            if (document.getElementById('newMainChara').alt == '') {
+                alert("変更メインキャラを選択してください");
+                return;
+            }
+        break;        
         case '拾いイベント（固定）':
 
         break;
