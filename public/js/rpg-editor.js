@@ -46,6 +46,7 @@ var settingEvents = [
     "effect",
     "move",
     "scene",
+    "changeMainChara",
 ]
 //セット可能オブジェクト
 var settingObjects = [
@@ -2233,6 +2234,30 @@ function setEvent(eventName, objFlg = false) {
             }
             editEvent.innerHTML = html;
             break;
+
+        case 'changeMainChara':
+            //情報取得
+            var mainCharaName = '';
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    mainCharaName = currentMapTip.events[orgEvtName].name;
+                }
+            } else {
+                if (registeredFlg) {
+                    mainCharaName = currentMapTip.object.events[orgEvtName].name;
+                }
+            }
+            html += '<p>【主人公変更】</p>';
+            html += getCharaObjectsForMainChara(mainCharaName);//一応シーンもスペシャルスキルも全部選択肢に入れる。カットシーンで必殺技のイメージを使いたいケースも考えられるから。
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'changeMainChara\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'changeMainChara\',true)">この内容でイベント登録</p>';
+            }
+            editEvent.innerHTML = html;
+
+
+            break;
         case '拾いイベント（固定）':
             html += '<p>【拾いイベント（固定）】</p>';
             var imgName = currentMapTip.object.imgName;
@@ -2407,6 +2432,28 @@ function getCutSceneLists(cutSceneSrc = '') {
     return html;
 }
 
+
+function getCharaObjectsForMainChara(mainCharaName='') {
+    var otherHtml = "";
+    var mainHtml = "";
+    mainHtml += '<p>変更メインキャラ</p>'
+    mainHtml += '<img src="" id="newMainChara" alt="">';
+    mainHtml += '<br>'
+    // if (cutSceneSrc != '') cutSceneSrc = decodeURI(document.getElementById(cutSceneSrc).src);
+    var charaElements = document.getElementsByClassName('obj_charas');
+    var charas = Array.from(charaElements);
+    charas.forEach(function(chara) {
+        otherHtml += '<img src="'+chara.src+'" onclick="setChangeMainChara(\''+chara.src+'\', \''+chara.alt+'\')">'; 
+        if (chara.alt == mainCharaName) {
+            mainHtml = '<p>変更メインキャラ</p>'
+            mainHtml += '<img src="'+chara.src+'" id="newMainChara" alt="'+chara.alt+'">';
+            mainHtml += '<br>'
+        }
+    });
+    mainHtml += otherHtml; 
+    return mainHtml; 
+}
+
 //選択したオブジェクトを、選択中オブジェクトに表示する
 function selectObjectImage(evt) {
     var selectedObjImage = document.getElementById('selectedObjImage');
@@ -2450,6 +2497,12 @@ function selectCutSceneImage(evt) {
     var selectedCutScene = evt.target.parentNode.parentNode.parentNode.previousElementSibling;
     var tmp = decodeURI(evt.target.src);
     selectedCutScene.src = tmp;
+}
+
+//変更対象の主人公をセット
+function setChangeMainChara(charaSrc, charaName) {
+    document.getElementById('newMainChara').src = charaSrc;
+    document.getElementById('newMainChara').alt = charaName;
 }
 
 //////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）end
@@ -4205,6 +4258,31 @@ function registEventToObj(evtName, objFlg = false) {
                 }
             }
         break;
+        case 'changeMainChara':
+            //nameを登録する
+            if (currentRegisteredEvent == '') {
+            // 新規の場合
+                if (objFlg == false) {
+                    currentMapTip.events[evtNameKey] = new Object(); 
+                    //マップイベントの場合
+                    currentMapTip.events[evtNameKey]['name'] = document.getElementById('newMainChara').alt;
+                } else {
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    //オブジェクトイベントの場合
+                    currentMapTip.object.events[evtNameKey]['name'] = document.getElementById('newMainChara').alt;
+                }
+            } else {
+            // 既存の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    currentMapTip.events[currentRegisteredEvent]['name'] = document.getElementById('newMainChara').alt;
+                } else {
+                    //オブジェクトイベントの場合
+                    currentMapTip.object.events[currentRegisteredEvent]['name'] = document.getElementById('newMainChara').alt;
+                }
+            }
+
+        break;        
         case '拾いイベント（固定）':
 
         break;
@@ -4212,7 +4290,9 @@ function registEventToObj(evtName, objFlg = false) {
     //マップオブジェクトに現在マップオブジェクトの変更を反映
     currrentMapObj[rowNum][colNum] = currentMapTip;
     //新規イベント登録後はイベント編集divを閉じる（選択していないのにdivが開いているのが気持ち悪いため）。
-    if (currentRegisteredEvent == '') editEvent.style.display = 'none';
+    //→やっぱりどんな時も登録後はイベント編集divを閉じる（保存されたか直感的に分かんないから）
+    //if (currentRegisteredEvent == '') editEvent.style.display = 'none';
+    editEvent.style.display = 'none';
 
     //イベント一覧を更新
     updateMapEventHTML();
