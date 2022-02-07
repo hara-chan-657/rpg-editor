@@ -958,14 +958,14 @@ function showCursorPos(evt) {
 //param1 : クリック時イベント情報
 function showMapTipData(evt) {
 
-    //現在選択中のイベントをクリア
-    currentRegisteredEvent = '';
-
-    // colNum, rowNumを更新する前にリターンする必要がある
+    // 現在選択中のイベントをクリア、colNum, rowNumを更新する前にリターンする必要がある
     if (setTargetMoveChipFlg) {
         setTargetMoveChip(evt);
         return;
     }
+
+    //現在選択中のイベントをクリア
+    currentRegisteredEvent = '';
 
 	//クリックした座標を取得する
 	var mousePos = getMousePosition(currentMapCanvas, evt);
