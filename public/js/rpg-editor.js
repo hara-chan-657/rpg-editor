@@ -745,6 +745,51 @@ function delOrder() {
     });
 }
 
+//
+function setFixDir(directionIndex){
+
+    if (currentMoveChip == undefined) {
+        alert('対象チップを選択してください');
+        return;
+    }
+
+    var newMoveObjInfo = currentMoveChip.getElementsByClassName("fixDir");
+
+    switch(directionIndex) {
+        case '3':
+            Array.from(newMoveObjInfo).forEach(function(event1) {
+                event1.innerText = 'left';
+            });
+        break;
+        case '2':
+            Array.from(newMoveObjInfo).forEach(function(event1) {
+                event1.innerText = 'right';
+            });
+        break;
+        case '1':
+            Array.from(newMoveObjInfo).forEach(function(event1) {
+                event1.innerText = 'up';
+            });
+        break;
+        case '0':
+            Array.from(newMoveObjInfo).forEach(function(event1) {
+                event1.innerText = 'down';
+            });
+        break;
+    }
+}
+
+function delFixDir() {
+    if (currentMoveChip == undefined) {
+        alert('対象チップを選択してください');
+        return;
+    }
+    var newMoveObjInfo = currentMoveChip.getElementsByClassName("fixDir");
+    Array.from(newMoveObjInfo).forEach(function(event1) {
+        event1.innerText = '';
+    });
+}
+
 //新ムーブオブジェクト選択モードにする
 var selectObjModeFlg = false;
 function startSelectObjMode() {
@@ -784,27 +829,34 @@ function showSelectedNewMoveObjInfo(evt) {
 
     if (tmpCurrentMapTip.hasOwnProperty('object')) {
 
-        if (tmpCurrentMapTip.object.objName != "character") {
-            console.log("キャラオブジェクトを選択してください");
-            return;
-        }
-
         var newMoveObjInfo = currentMoveChip.getElementsByClassName("newMoveObjInfo");
         Array.from(newMoveObjInfo).forEach(function(event1) {
-            //オブジェクトの情報を表示
             var html = '';
-            html += '<p>キャラ名：' + tmpCurrentMapTip.object.charaName + '</p>';
-            html += '<p>設定済みイベント一覧</p>';
-            html += '<ol>';
-            var evtIndex = 0;
-            for( key in tmpCurrentMapTip.object.events ) {
-                html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
-                evtIndex++;
+            if (tmpCurrentMapTip.object.objName == "tool") {
+            //ツール
+                html += '<p>オブジェクトタイプ：ツール</p>';
+                html += '<p>設定済みイベント一覧</p>';
+                html += '<ol>';
+                html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
+                html += '</ol>';
+                var objTxt = JSON.stringify(tmpCurrentMapTip.object);
+                html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
+            } else {
+            //キャラクター
+                html += '<p>オブジェクトタイプ：キャラクター</p>';
+                html += '<p>キャラ名：' + tmpCurrentMapTip.object.charaName + '</p>';
+                html += '<p>設定済みイベント一覧</p>';
+                html += '<ol>';
+                var evtIndex = 0;
+                for( key in tmpCurrentMapTip.object.events ) {
+                    html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
+                    evtIndex++;
+                }
+                html += '</ol>';
+                var objTxt = JSON.stringify(tmpCurrentMapTip.object);
+                html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
             }
-            html += '</ol>';
-            var objTxt = JSON.stringify(tmpCurrentMapTip.object);
-            html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
-            event1.innerHTML += html; //+=なのに注意。クリーチャーオブジェクトの場合、クリーチャーであることを直前のタグで表示しないと分かりづらいため。
+            event1.innerHTML = html;
         });
         
 
@@ -2075,13 +2127,25 @@ function setEvent(eventName, objFlg = false) {
             html += '      <p>移動後削除<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
             html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" onChange="">しない</input>';
             html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" onChange="">する</input>';
+            html += '    <p>スライド<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
+            html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="false">しない</input>';
+            html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="true">する</input>';
+            html += '    <p>固定向き</p>';
+            html += '    <p class="fixDir"></p>';
+            html += '    <p>';
+            html += '      <button onclick="setFixDir(\'3\')">←</button>';
+            html += '      <button onclick="setFixDir(\'2\')">→</button>';
+            html += '      <button onclick="setFixDir(\'1\')">↑</button>';
+            html += '      <button onclick="setFixDir(\'0\')">↓</button>';
+            html += '      <button onclick="delFixDir()">削除</button>';
+            html += '    </p>';
             html += '      <p>追加オブジェクト</p>';
             html += '      <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
             html += '      <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
-            html += '      <p><span class="newMoveObjInfo"></span></p>';
-            editEvent.innerHTML = html;
+            html += '      <div class="newMoveObjInfo"></div>';
             html += '    </div>';
             html += '  </div>';
+            // editEvent.innerHTML = html;
             //設定済みのチップを格納
             for (var i=0; i<chips.length; i++) {
                 var toX = Number(chips[i]['fromX']);
@@ -2116,30 +2180,56 @@ function setEvent(eventName, objFlg = false) {
                 chips[i]['finishDelFlg'] == "true" ? Del = 'checked' : notDel = 'checked';
                 html += '    <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" '+ notDel +'>しない</input>';
                 html += '    <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" '+ Del +'>する</input>';
+                var notSlide = '';
+                var slide = '';
+                chips[i]['slideFlg'] == "true" ? slide = 'checked' : notSlide = 'checked';
+                html += '    <p>スライド<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
+                html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="false" '+ notSlide +'>しない</input>';
+                html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="true" '+ slide +'>する</input>';
+                html += '    <p>固定向き</p>';
+                html += '    <p class="fixDir">'+ chips[i]['fixDir'] +'</p>';
+                var fixDir = '';
+                html += '    <p>';
+                html += '      <button onclick="setFixDir(\'3\')">←</button>';
+                html += '      <button onclick="setFixDir(\'2\')">→</button>';
+                html += '      <button onclick="setFixDir(\'1\')">↑</button>';
+                html += '      <button onclick="setFixDir(\'0\')">↓</button>';
+                html += '      <button onclick="delFixDir()">削除</button>';
+                html += '    </p>';
                 html += '    <p>追加オブジェクト</p>';
-                html += '    <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
+                html += '      <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
                 html += '    <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
-                var objInfoHTML = '';
+                html += '    <div class="newMoveObjInfo">';
                 if (chips[i].hasOwnProperty('newMoveObj')) {
-                    //今のつめ方でつめる
-                    var objInfoHTML = '';
-                    objInfoHTML += '<p>キャラ名：' + chips[i]['newMoveObj']['charaName'] + '</p>';
-                    objInfoHTML += '<p>設定済みイベント一覧</p>';
-                    objInfoHTML += '<ol>';
-                    var evtIndex = 0;
-                    for( key in chips[i]['newMoveObj']['events'] ) {
-                        objInfoHTML += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
-                        evtIndex++;
+                    if (chips[i]['newMoveObj']['objName'] == "tool") {
+                    //ツール
+                        html += '      <p>オブジェクトタイプ：ツール</p>';
+                        html += '      <p>設定済みイベント一覧</p>';
+                        html += '      <ol>';
+                        html += '      <li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
+                        html += '      </ol>';
+                        var objTxt = JSON.stringify(chips[i]['newMoveObj']);
+                        html += '      <p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';                        
+                    } else {
+                    //キャラクター
+                        html += '      <p>オブジェクトタイプ：キャラクター</p>';
+                        html += '      <p>キャラ名：' + chips[i]['newMoveObj']['charaName'] + '</p>';
+                        html += '      <p>設定済みイベント一覧</p>';
+                        html += '      <ol>';
+                        var evtIndex = 0;
+                        for( key in chips[i]['newMoveObj']['events'] ) {
+                            html += '      <li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
+                            evtIndex++;
+                        }
+                        html += '      </ol>';
+                        var objTxt = JSON.stringify(chips[i]['newMoveObj']);
+                        html += '      <p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
                     }
-                    objInfoHTML += '</ol>';
-                    var objTxt = JSON.stringify(chips[i]['newMoveObj']);
-                    objInfoHTML += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
                 }
-                html += '    <p><span class="newMoveObjInfo">'+ objInfoHTML +'</span></p>';
+                html += '    </div>';
                 //オブジェクトセットの際は、イベント編集ウィンドウをお借りする
-                editEvent.innerHTML = html;
+                // editEvent.innerHTML = html;
                 html += '  </div>';
-                //html += '</div>';
             }
             html += '</div>';
             var slow = '';
@@ -2150,7 +2240,6 @@ function setEvent(eventName, objFlg = false) {
             html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="9" '+ slow +'>遅い</input>';
             html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="6" '+ normal +'>普通</input>';
             html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="3" '+ fast +'>速い</input>';
-            html += '<p></p>';
             if (objFlg == false) {
                 html += '<p id="registEvent" onclick="registEventToObj(\'move\')">この内容でイベント登録</p>';
             } else {
@@ -3303,6 +3392,14 @@ function registEventToObj(evtName, objFlg = false) {
                 });
                 if (errorFlg) {alert("削除フラグを選択してください：コンテナ"+containerNumber);containerNumber++;return;}　
 
+                //slideFlg
+                errorFlg = true;
+                var slideFlg = event.getElementsByClassName("slideFlg");
+                Array.from(slideFlg).forEach(function(event1) {
+                    if (event1.checked) errorFlg = false; //チェックされてればOK
+                });
+                if (errorFlg) {alert("スライドフラグを選択してください：コンテナ"+containerNumber);containerNumber++;return;}　
+
                 containerNumber++;
             });
             if (errorFlg) {alert("登録には進みません");return;}
@@ -3827,6 +3924,18 @@ function registEventToObj(evtName, objFlg = false) {
                             if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
                         });
 
+                        //slideFlg
+                        var slideFlg = event.getElementsByClassName("slideFlg");
+                        Array.from(slideFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['slideFlg'] =　event1.value;
+                        });
+
+                        //fixDir
+                        var fixDir = event.getElementsByClassName("fixDir");
+                        Array.from(fixDir).forEach(function(event1) {
+                            currentMapTip.events[evtNameKey][chipNameKey]['fixDir'] =　event1.innerText;
+                        });
+
                         //追加オブジェクト
                         var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
                         Array.from(newMoveObjInfo).forEach(function(event1) {
@@ -3884,6 +3993,18 @@ function registEventToObj(evtName, objFlg = false) {
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
                             if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
+                        });
+
+                        //slideFlg
+                        var slideFlg = event.getElementsByClassName("slideFlg");
+                        Array.from(slideFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['slideFlg'] =　event1.value;
+                        });
+
+                        //fixDir
+                        var fixDir = event.getElementsByClassName("fixDir");
+                        Array.from(fixDir).forEach(function(event1) {
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['fixDir'] =　event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -3948,6 +4069,18 @@ function registEventToObj(evtName, objFlg = false) {
                             if (event1.checked) currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
                         });
 
+                        //slideFlg
+                        var slideFlg = event.getElementsByClassName("slideFlg");
+                        Array.from(slideFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.events[currentRegisteredEvent][chipNameKey]['slideFlg'] =　event1.value;
+                        });
+
+                        //fixDir
+                        var fixDir = event.getElementsByClassName("fixDir");
+                        Array.from(fixDir).forEach(function(event1) {
+                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['fixDir'] =　event1.innerText;
+                        });
+
                         //追加オブジェクト
                         var newMoveObjInfo = event.getElementsByClassName("newMoveObjInfo");
                         Array.from(newMoveObjInfo).forEach(function(event1) {
@@ -4004,6 +4137,18 @@ function registEventToObj(evtName, objFlg = false) {
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
                             if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
+                        });
+
+                        //slideFlg
+                        var slideFlg = event.getElementsByClassName("slideFlg");
+                        Array.from(slideFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['slideFlg'] =　event1.value;
+                        });
+
+                        //fixDir
+                        var fixDir = event.getElementsByClassName("fixDir");
+                        Array.from(fixDir).forEach(function(event1) {
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fixDir'] =　event1.innerText;
                         });
 
                         //追加オブジェクト
