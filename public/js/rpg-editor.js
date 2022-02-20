@@ -47,6 +47,8 @@ var settingEvents = [
     "move",
     "scene",
     "changeMainChara",
+    "follow",
+    "deleteObject",
 ]
 //セット可能オブジェクト
 var settingObjects = [
@@ -2347,6 +2349,29 @@ function setEvent(eventName, objFlg = false) {
 
 
             break;
+        case 'follow':
+            //情報取得
+            var followData = null;
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    followData = currentMapTip.events[orgEvtName];
+                }
+            } else {
+                if (registeredFlg) {
+                    followData = currentMapTip.object.events[orgEvtName];
+                }
+            }
+            html += '<p>【追跡】</p>';
+            html += getCharaObjectsForFollow(followData);
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'follow\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'follow\',true)">この内容でイベント登録</p>';
+            }
+            editEvent.innerHTML = html;
+
+
+            break;
         case '拾いイベント（固定）':
             html += '<p>【拾いイベント（固定）】</p>';
             var imgName = currentMapTip.object.imgName;
@@ -2543,6 +2568,41 @@ function getCharaObjectsForMainChara(mainCharaName='') {
     return mainHtml; 
 }
 
+function getCharaObjectsForFollow(followData=null) {
+    var otherHtml = "";
+    var mainHtml = "";
+    var addCheck = "";
+    var charaName = "";
+    var delCheck = "";
+    var charaSrc = "";
+    var charaAlt = "";
+    if (followData != null) {
+        if (followData.type == 'add') {
+            addCheck = "checked";   
+            charaName = followData.name;
+        } else {
+            delCheck = "checked";
+        }
+    }
+    mainHtml += '<p><input type="radio" name="followEventType" class="followEventType" value="add" '+addCheck+'></input>タイプ：追加</p>';
+    mainHtml += '<p>追跡キャラ</p>'
+    var charaElements = document.getElementsByClassName('obj_charas');
+    var charas = Array.from(charaElements);
+    charas.forEach(function(chara) {
+        if (chara.alt == charaName) {
+            charaSrc = chara.src;
+            charaAlt = chara.alt;
+        }
+        otherHtml += '<img src="'+chara.src+'" onclick="setFollowChara(\''+chara.src+'\', \''+chara.alt+'\')">'; 
+    });
+    mainHtml += '<img src="'+charaSrc+'" id="followChara" alt="'+charaAlt+'">';
+    mainHtml += '<br>';
+    mainHtml += otherHtml;
+    mainHtml += '<p><input type="radio" name="followEventType" class="followEventType" value="del" '+delCheck+'></input>タイプ：削除</p>';
+    mainHtml += '<br>'
+    return mainHtml; 
+}
+
 //選択したオブジェクトを、選択中オブジェクトに表示する
 function selectObjectImage(evt) {
     var selectedObjImage = document.getElementById('selectedObjImage');
@@ -2592,6 +2652,12 @@ function selectCutSceneImage(evt) {
 function setChangeMainChara(charaSrc, charaName) {
     document.getElementById('newMainChara').src = charaSrc;
     document.getElementById('newMainChara').alt = charaName;
+}
+
+//フォローするキャラをセット
+function setFollowChara(charaSrc, charaName) {
+    document.getElementById('followChara').src = charaSrc;
+    document.getElementById('followChara').alt = charaName;
 }
 
 //////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）end
@@ -3408,7 +3474,7 @@ function registEventToObj(evtName, objFlg = false) {
             //カットシーンがあるかないかだけ確認
             var selectedCutScene = document.getElementById("selectedCutScene");
             var fullSrc = decodeURI(selectedCutScene.src);
-            var imgName = fullSrc.split("/").reverse()[0]
+            var imgName = fullSrc.split("/").reverse()[0];
             if (imgName == 'getProjectData') {
                 //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                 //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
@@ -3422,7 +3488,44 @@ function registEventToObj(evtName, objFlg = false) {
                 alert("変更メインキャラを選択してください");
                 return;
             }
-        break;        
+        break;
+        case 'follow':
+            var followEventType = document.getElementsByClassName("followEventType");
+            var checked = false;
+            Array.from(followEventType).forEach(function(event) {
+                if (event.checked) checked = true;
+            });
+            if (!checked) {
+                alert("フォローイベントタイプを選択してください");
+                return;                
+            }
+            var error = true;
+            Array.from(followEventType).forEach(function(event) {
+
+                if (event.checked && event.value == 'add'){
+                    //addの場合、srcのチェック
+                    var followChara = document.getElementById("followChara");
+                    var fullSrc = decodeURI(followChara.src);
+                    var imgName = fullSrc.split("/").reverse()[0];
+                    if (imgName == 'getProjectData') {
+                        alert("フォローキャラクターを選択してください");
+                        error = true;
+                        return;
+                    } else {
+                        error = false;
+                    }
+                } else if (event.checked && event.value == 'del') {
+                    error = false;
+                    //delの場合、何もしない
+                } else {
+
+                }
+            });
+            if (error) {
+                alert("登録には進みません");
+                return;                
+            }
+        break;
         case '拾いイベント（固定）':
 
         break;
@@ -4433,7 +4536,91 @@ function registEventToObj(evtName, objFlg = false) {
                 }
             }
 
-        break;        
+        break;
+        case 'follow':
+            //nameを登録する
+            if (currentRegisteredEvent == '') {
+            // 新規の場合
+                if (objFlg == false) {
+                    currentMapTip.events[evtNameKey] = new Object(); 
+                    //マップイベントの場合
+                    var followEventType = document.getElementsByClassName("followEventType");
+                    Array.from(followEventType).forEach(function(event) {
+
+                        if (event.checked && event.value == 'add'){
+                            //addの場合、srcのチェック
+                            currentMapTip.events[evtNameKey]['type'] = 'add';
+                            currentMapTip.events[evtNameKey]['name'] = document.getElementById("followChara").alt;
+                        } else if (event.checked && event.value == 'del') {
+                            //delの場合
+                            currentMapTip.events[evtNameKey]['type'] = 'del';
+                            if (currentMapTip.events[evtNameKey].hasOwnProperty('name')) delete currentMapTip.events[evtNameKey]['name'];
+                        } else {
+
+                        }
+                    });
+
+                } else {
+                    //オブジェクトイベントの場合
+                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    //マップイベントの場合
+                    var followEventType = document.getElementsByClassName("followEventType");
+                    Array.from(followEventType).forEach(function(event) {
+
+                        if (event.checked && event.value == 'add'){
+                            //addの場合、srcのチェック
+                            currentMapTip.object.events[evtNameKey]['type'] = 'add';
+                            currentMapTip.object.events[evtNameKey]['name'] = document.getElementById("followChara").alt;
+                        } else if (event.checked && event.value == 'del') {
+                            //delの場合
+                            currentMapTip.events[evtNameKey]['type'] = 'del';
+                            if (currentMapTip.object.events[evtNameKey].hasOwnProperty('name')) delete currentMapTip.object.events[evtNameKey]['name'];
+                        } else {
+
+                        }
+                    });
+                }
+            } else {
+            // 既存の場合
+                if (objFlg == false) {
+                    //マップイベントの場合
+                    var followEventType = document.getElementsByClassName("followEventType");
+                    Array.from(followEventType).forEach(function(event) {
+
+                        if (event.checked && event.value == 'add'){
+                            //addの場合、srcのチェック
+                            currentMapTip.events[currentRegisteredEvent]['type'] = 'add';
+                            currentMapTip.events[currentRegisteredEvent]['name'] = document.getElementById("followChara").alt;
+                        } else if (event.checked && event.value == 'del') {
+                            //delの場合
+                            currentMapTip.events[currentRegisteredEvent]['type'] = 'del';
+                            if (currentMapTip.events[currentRegisteredEvent].hasOwnProperty('name')) delete currentMapTip.events[currentRegisteredEvent]['name'];
+                        } else {
+
+                        }
+                    });
+
+                } else {
+                    //オブジェクトイベントの場合
+                    var followEventType = document.getElementsByClassName("followEventType");
+                    Array.from(followEventType).forEach(function(event) {
+
+                        if (event.checked && event.value == 'add'){
+                            //addの場合、srcのチェック
+                            currentMapTip.object.events[currentRegisteredEvent]['type'] = 'add';
+                            currentMapTip.object.events[currentRegisteredEvent]['name'] = document.getElementById("followChara").alt;
+                        } else if (event.checked && event.value == 'del') {
+                            //delの場合
+                            currentMapTip.object.events[currentRegisteredEvent]['type'] = 'del';
+                            if (currentMapTip.object.events[currentRegisteredEvent].hasOwnProperty('name')) delete currentMapTip.object.events[currentRegisteredEvent]['name'];
+                        } else {
+
+                        }
+                    });
+                }
+            }
+
+        break;
         case '拾いイベント（固定）':
 
         break;
