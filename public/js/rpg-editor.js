@@ -26,6 +26,8 @@ var editStartPosFlg = false;
 var exportMapChipFlg = false;
 //移動チップモードフラグ
 var setTargetMoveChipFlg = false;
+//削除オブジェクトチップモードフラグ
+var setDeleteObjectChipFlg = false;
 //スタートポジションX
 var startPosX;
 //スタートポジションY
@@ -405,6 +407,28 @@ function quitAddTargetMoveChip() {
     reloadEditMap();
 }
 
+//イベント：オブジェクト削除を解除する
+function quitAddDeleteObjectChip() {
+    //確認
+    var ret = confirm('入力中の情報はリセットされます。よろしいですか？');
+    if (!ret) return;
+
+    //戻すよ
+    setDeleteObjectChipFlg = false;
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = '';
+    mapDataContainer.style.backgroundColor = '';
+    editEvent.innerHTML = '';
+    editEvent.style.display = 'none';
+
+    //画面リセット
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+}
+
 //対象のチップを切り替える
 var currentMoveChip; //選択中のコンテナ
 function changeTargetMoveChip() {
@@ -555,6 +579,19 @@ function setTargetMoveChip(evt) {
     Array.from(fromX).forEach(function(event) {event.innerText = tmpColNum;});
     var fromY = currentMoveChip.getElementsByClassName("fromY");
     Array.from(fromY).forEach(function(event) {event.innerText = tmpRowNum;});
+
+}
+
+//削除オブジェクトの位置をセットする。
+function setDeleteObjectChip(evt) {
+    //evtから位置を取り出して、XYを画面にセット
+
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+
+    //クリックしたマップチップを特定、画面に設定
+    document.getElementById("delObjChipX").innerText = Math.floor(mousePos.x/mapLength);
+    document.getElementById("delObjChipY").innerText = Math.floor(mousePos.y/mapLength);
 
 }
 
@@ -1015,6 +1052,11 @@ function showMapTipData(evt) {
     // 現在選択中のイベントをクリア、colNum, rowNumを更新する前にリターンする必要がある
     if (setTargetMoveChipFlg) {
         setTargetMoveChip(evt);
+        return;
+    }
+
+    if (setDeleteObjectChipFlg) {
+        setDeleteObjectChip(evt);
         return;
     }
 
@@ -1688,6 +1730,8 @@ function deleteEvent(objFlg = false) {
     mapDataContainer.style.backgroundColor = '';
     startSelectObjModeFlg = false;
     setTargetMoveChipFlg = false;
+    //オブジェクト削除用のフラグを戻す
+    setDeleteObjectChipFlg = false;
 
     //イベントのHTMLを更新
     updateMapEventHTML();
@@ -2367,6 +2411,41 @@ function setEvent(eventName, objFlg = false) {
                 html += '<p id="registEvent" onclick="registEventToObj(\'follow\')">この内容でイベント登録</p>';
             } else {
                 html += '<p id="registEvent" onclick="registEventToObj(\'follow\',true)">この内容でイベント登録</p>';
+            }
+            editEvent.innerHTML = html;
+
+        case 'deleteObject':
+            //まずはオブジェクト削除モード用に切り替える
+            setDeleteObjectChipFlg = true;
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = 'none';
+            mapDataContainer.style.backgroundColor = 'gray';
+            //イベントの操作ボタンだけはクリックできるようにしておく
+            var mapEvent = document.getElementById("mapEvent");
+            mapEvent.style.pointerEvents = 'auto';
+
+
+            //情報取得
+            var delX = '';
+            var delY = '';
+            if (objFlg == false) {
+                if (registeredFlg) {
+                    delX = currentMapTip.events[orgEvtName]['delX'];
+                    delY = currentMapTip.events[orgEvtName]['delY'];
+                }
+            } else {
+                if (registeredFlg) {
+                    delX = currentMapTip.object.events[orgEvtName]['delX'];
+                    delY = currentMapTip.object.events[orgEvtName]['delY'];
+                }
+            }
+            html += '<p>【オブジェクト削除】</p>';
+            html += '<button onclick="quitAddDeleteObjectChip()">やめる</button>';
+            html += '<p>削除対象チップ（<span id="delObjChipX">'+delX+'</span>：<span id="delObjChipY">'+delY+'</span>）</p>';
+            if (objFlg == false) {
+                html += '<p id="registEvent" onclick="registEventToObj(\'deleteObject\')">この内容でイベント登録</p>';
+            } else {
+                html += '<p id="registEvent" onclick="registEventToObj(\'deleteObject\',true)">この内容でイベント登録</p>';
             }
             editEvent.innerHTML = html;
 
@@ -3526,6 +3605,13 @@ function registEventToObj(evtName, objFlg = false) {
                 return;                
             }
         break;
+        // マップ、オブジェクトの区別なしでバリデーション
+        case 'deleteObject':
+            if (document.getElementById('delObjChipX').innerText == '' || document.getElementById('delObjChipY').innerText == '') {
+                alert("削除対象チップを指定してください");
+                return;
+            }
+        break;
         case '拾いイベント（固定）':
 
         break;
@@ -4619,6 +4705,45 @@ function registEventToObj(evtName, objFlg = false) {
                     });
                 }
             }
+
+        break;
+        case 'deleteObject':
+            if (currentRegisteredEvent == '') {
+                //新規のイベントの場合
+                if (objFlg == false) {
+                    //イベント名のキーごとにオブジェクトを作成
+                    currentMapTip.events[evtNameKey] = new Object();
+                    //トークのコンテンツを格納
+                    currentMapTip.events[evtNameKey]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.events[evtNameKey]['delY'] = document.getElementById('delObjChipY').innerText;
+
+                } else {
+                    //イベント名のキーごとにオブジェクトを作成
+                    //currentMapTip.object['events'] = new Object(); これいらないな
+                    currentMapTip.object.events[evtNameKey] = new Object();
+                    //トークのコンテンツを格納
+                    currentMapTip.object.events[evtNameKey]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.object.events[evtNameKey]['delY'] = document.getElementById('delObjChipY').innerText;
+                }
+            } else {
+                //既存のイベントの場合
+                //var evtNameKey = getEventKey(evtName, objFlg);
+                if (objFlg == false) {
+                    currentMapTip.events[currentRegisteredEvent]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.events[currentRegisteredEvent]['delY'] = document.getElementById('delObjChipY').innerText;
+
+                } else {
+                    currentMapTip.object.events[currentRegisteredEvent]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.object.events[currentRegisteredEvent]['delY'] = document.getElementById('delObjChipY').innerText;
+                }
+            }
+
+            //戻すよ
+            setDeleteObjectChipFlg = false;
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = '';
+            mapDataContainer.style.backgroundColor = '';
+            editEvent.innerHTML = '';
 
         break;
         case '拾いイベント（固定）':
