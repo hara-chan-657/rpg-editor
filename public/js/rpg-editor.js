@@ -2945,6 +2945,13 @@ function setTransitionMap(mapName, orgEvtName) {
                                 document.getElementById('transitionDirection').selectedIndex = l;   
                             }
                         }
+                    } else {
+                    //既存イベントで、違うマップに変更した場合
+                        for (var k=0; k<maps.length; k++) {
+                            if (maps[k].alt == mapName) {
+                                transitionMapImage.src = maps[k].getAttribute('src');
+                            }
+                        }
                     }
                 }
             //break;
