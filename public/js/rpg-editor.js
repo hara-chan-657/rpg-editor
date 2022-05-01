@@ -3006,6 +3006,9 @@ function drawEvtAndObjAndTurnChip() {
                     //多分もうここにくることはない
                     alert(i + ":" + j );
                 }
+                if (currrentMapObj[i][j]['object'].hasOwnProperty('events')) {
+                    drawTags('objEvents',j,i);
+                }
             }
             if (currrentMapObj[i][j].hasOwnProperty('events')) {
                 drawTags('events',j,i);
@@ -3045,6 +3048,25 @@ function drawTags(type, j, i) {
             // 塗りつぶしの色
             currentMapContext.fillStyle = "yellow"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
             if (currrentMapObj[i][j].hasOwnProperty('trigger') && currrentMapObj[i][j].trigger != "トリガー設定なし") currentMapContext.fillStyle = "red"; //イベントもトリガーも設定している場合は赤
+            //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
+            // 塗りつぶしを実行
+            currentMapContext.fill();
+            // 線の色
+            currentMapContext.strokeStyle = "purple" ;
+            // 線の太さ
+            currentMapContext.lineWidth =  1;
+            // 線を描画を実行
+            currentMapContext.stroke() ;
+        break;
+
+
+        case 'objEvents':
+            // パスをリセット
+            currentMapContext.beginPath () ;
+            // レクタングルの座標(50,50)とサイズ(75,50)を指定
+            currentMapContext.rect(j*mapLength ,i*mapLength , 10, 10);
+            // 塗りつぶしの色
+            currentMapContext.fillStyle = "red"; //オブジェクトはトリガーAボタンで固定なので絶対赤
             //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
             // 塗りつぶしを実行
             currentMapContext.fill();
