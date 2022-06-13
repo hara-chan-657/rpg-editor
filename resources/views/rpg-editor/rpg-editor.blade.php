@@ -228,6 +228,28 @@
             </div>
         @endforeach
     </div>
+    <div id="charactersSelectBoxFrom" style="display:;">
+        <select id="" name="charactersSelectBoxFrom" class="skillFrom">
+            <option value="1">敵１</option>
+            <option value="2">敵２（メイン）</option>
+            <option value="3">敵３</option>
+            <option value="4">味方１</option>
+            <option value="5">味方２（メイン）</option>
+            <option value="6">味方３</option>
+        </select>
+    </div>
+    <div id="charactersSelectBoxTo" style="display:;">
+        <select id="" name="charactersSelectBoxTo" class="skillTo">
+            <option value="1">敵１</option>
+            <option value="2">敵２（メイン）</option>
+            <option value="3">敵３</option>
+            <option value="4">味方１</option>
+            <option value="5">味方２（メイン）</option>
+            <option value="6">味方３</option>
+            <option value="7">敵All</option>
+            <option value="8">味方All</option>
+        </select>
+    </div>
 
     <!-- オブジェクト設定用の画像コンテナ -->
     <div id="objects" style="display:;">

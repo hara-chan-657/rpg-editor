@@ -14,8 +14,9 @@ class SkillController extends Controller
     public function editSkill(Request $request) {
         $skills = $this->getSkills($request->project);
         $specialSkills = $this->getSpecialSkills($request->project);
+        $pngFiles = $this->getPngFiles($request->project);
 
-        return view('rpg-editor.edit-skill', ['project'=>$request->project,'skills'=>$skills, 'specialSkills'=>$specialSkills]);
+        return view('rpg-editor.edit-skill', ['project'=>$request->project,'skills'=>$skills, 'specialSkills'=>$specialSkills, 'pngFiles'=>$pngFiles]);
     }
 
     // DBに登録済みのスキル情報を取得する（where=プロジェクトネーム)
@@ -55,7 +56,10 @@ class SkillController extends Controller
         $updateData[] = $specialSkills;
         $this->updateProjectData($request->project, $updateData);
 
-        return view('rpg-editor.edit-skill', ['project'=>$request->project,'skills'=>$skills, 'specialSkills'=>$specialSkills]);
+        //画像の一覧を取得
+        $pngFiles = $this->getPngFiles($request->project);
+
+        return view('rpg-editor.edit-skill', ['project'=>$request->project,'skills'=>$skills, 'specialSkills'=>$specialSkills, 'pngFiles'=>$pngFiles]);
     }
 
     //キャラクターをデータベースに登録しにいく
@@ -78,7 +82,10 @@ class SkillController extends Controller
         $updateData[] = $specialSkills;
         $this->updateProjectData($request->project, $updateData);
 
-        return view('rpg-editor.edit-skill', ['project'=>$request->project,'skills'=>$skills, 'specialSkills'=>$specialSkills]);
+        //画像の一覧を取得
+        $pngFiles = $this->getPngFiles($request->project);
+
+        return view('rpg-editor.edit-skill', ['project'=>$request->project,'skills'=>$skills, 'specialSkills'=>$specialSkills, 'pngFiles'=>$pngFiles]);
     }
 
 
@@ -117,6 +124,39 @@ class SkillController extends Controller
         echo $json;
         file_put_contents($rets[0], $json);
         file_put_contents("../../rpg-player/public/projects/" . $project . "/projectData.json", $json);
+    }
+
+    //rpg-Playerに登録してある画像ファイル情報を取得する（まだスキルイメージとしてDBに保存しているとは限らない）
+    public function getPngFiles($project) {
+
+        $excludes = array(
+            '.',
+            '..',
+            '.DS_Store'
+        );
+
+        $pngFiles = array();
+
+        foreach(glob('../../rpg-player/public/projects/' . $project . '/cutScenes/specialSkill/*') as $skillCharaDir){
+            if (in_array($skillCharaDir, $excludes)) {
+                continue;
+            }
+
+            $i = 0; //画像インデックス
+
+            $charaName = basename($skillCharaDir);
+
+            //キャラのファイル毎に、存在方向配列にデータを保存していく
+            foreach(glob($skillCharaDir . '/*.png') as $pngFile){
+                if(is_file($pngFile)){
+                    $pngFiles[$charaName][$i]['path'] = '../' . $pngFile; //../../../rpg-player/public/projects/$project/cutScene/specialSkill/*/*.png"
+                    $pngFiles[$charaName][$i]['baseName'] = basename($pngFile, '.png');
+                    $i++;
+                }
+            }
+        }
+
+        return $pngFiles;
     }
 
 }

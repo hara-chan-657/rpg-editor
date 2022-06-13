@@ -22,7 +22,16 @@
                 <option value="{{$i}}">{{$i}}</option>
             @endfor
             </select></div>
-            <div><span>大技画像（あとで実装）</span><input type="hidden" name="skillImagePath" id="" value="dummy"></div>
+            <p>画像を選択してください</p>
+            <div class="eachSkillContainer"><input type="radio" name="skillImagePath" id="" value="dummy" checked="true">dummy(通常スキル)</div>
+            @foreach($pngFiles as $charaName)
+                @foreach($charaName as $pngFile)
+                    <div class="eachSkillContainer">
+                        <input type="radio" name="skillImagePath" class="" value="{{$pngFile['baseName']}}">{{$pngFile['baseName']}}
+                        <img src="{{$pngFile['path']}}" class='skillImage' width="" height="" alt="{{$pngFile['baseName']}}">
+                    </div>
+                @endforeach
+            @endforeach
         </form>
         </div>
     </div>
@@ -47,7 +56,7 @@
             {{ csrf_field() }}
             <input type="hidden" name="project" id="" value="{{$project}}">
             <input type="hidden" name="id" value="{{$skill->id}}">
-            <input type="submit" onclick="return confirm('削除OK?')" value="削除">
+            <input type="submit" onclick="return confirm('削除OK?')" value="削除"><span>※未実装</span>
         </form>
         </div>
     @endforeach
@@ -62,6 +71,7 @@
             <div><span>威力</span><input type="text" name="skillPower" id="" value="{{$specialSkill->skillPower}}"></div>
             <div><span>技分類</span><input type="text" name="skillType" id="" value="{{$specialSkill->skillType}}"></div>
             <div><span>大技画像</span><input type="text" name="skillImagePath" id="" value="{{$specialSkill->skillImagePath}}"></div>
+            <div><span style="color: red; font-size: 11px;">※大技画像は名前をコピペしてください</span></div>
             <input type="hidden" name="project" id="" value="{{$project}}">
             <input type="hidden" name="id" value="{{$specialSkill->id}}">
             <input type="submit" value="更新">
@@ -70,7 +80,7 @@
             {{ csrf_field() }}
             <input type="hidden" name="project" id="" value="{{$project}}">
             <input type="hidden" name="id" value="{{$specialSkill->id}}">
-            <input type="submit" onclick="return confirm('削除OK?')" value="削除">
+            <input type="submit" onclick="return confirm('削除OK?')" value="削除"><span>※未実装</span>
         </form>
         </div>
     @endforeach

@@ -246,6 +246,27 @@ margin: 0px 3px;
     display: block;
 }
 
+.eachSkillContainer {
+    /* display: inline; */
+    float: left;
+    margin: 0px 3px;
+}
+
+.eachSkillContainer img {
+    display: block;
+    width: 50%;
+}
+
+.registeredSkillContainer {
+    /* display: inline; */
+    float: left;
+    margin: 0px 3px;
+}
+
+.registeredSkillContainer img {
+    display: block;
+}
+
 .eventCharacterContainer {
     border: 1px solid green;
     float: left;
@@ -330,5 +351,15 @@ margin: 0px 3px;
 #selectedCutScene {
     height: 144px;
     width: 240px;
+}
+
+.eachBattleOrderContainer {
+    border: solid lime 1px;
+}
+
+.battleTalkContainer, .skillTalkContainer{
+    height: 96px;
+    overflow: scroll;
+    display: inline-block;
 }
 

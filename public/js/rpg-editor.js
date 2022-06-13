@@ -1883,25 +1883,40 @@ function setEvent(eventName, objFlg = false) {
             var charaId1 = '0';
             var charaId2 = '0';
             var charaId3 = '0';
+            var charaId4 = '0';
+            var charaId5 = '0';
+            var charaId6 = '0';
             var chara1 = 'キャラ1';
-            var chara2 = 'キャラ2（メイン）';
+            var chara2 = 'キャラ2（敵メイン）';
             var chara3 = 'キャラ3';
+            var chara4 = 'キャラ4';
+            var chara5 = 'キャラ5（味方メイン）';
+            var chara6 = 'キャラ6';
+            var battleOrders;
             if (objFlg == false) {
                 if (registeredFlg) {
                     charaGroup = currentMapTip.events[orgEvtName].charaGroup;
                     isBoss = currentMapTip.events[orgEvtName].isBoss;
                     //キャラ1
                     charaId1 = currentMapTip.events[orgEvtName].chara1;
-                    var chrIndex1 = currentMapTip.events[orgEvtName].chara1;
-                    chara1 = projectDataObj['characters'][chrIndex1].chrName;
+                    if(charaId1 != "") chara1 = projectDataObj['characters'][charaId1].chrName;
                     //キャラ2
                     charaId2 = currentMapTip.events[orgEvtName].chara2;
-                    var chrIndex2 = currentMapTip.events[orgEvtName].chara2;
-                    chara2 = projectDataObj['characters'][chrIndex2].chrName;
+                    if(charaId2 != "") chara2 = projectDataObj['characters'][charaId2].chrName;
                     //キャラ3
                     charaId3 = currentMapTip.events[orgEvtName].chara3;
-                    var chrIndex3 = currentMapTip.events[orgEvtName].chara3;
-                    chara3 = projectDataObj['characters'][chrIndex3].chrName;
+                    if(charaId3 != "") chara3 = projectDataObj['characters'][charaId3].chrName;
+                    //キャラ4
+                    charaId4 = currentMapTip.events[orgEvtName].chara4;
+                    if(charaId4 != "") chara4 = projectDataObj['characters'][charaId4].chrName;
+                    //キャラ5
+                    charaId5 = currentMapTip.events[orgEvtName].chara5;
+                    if(charaId5 != "") chara5 = projectDataObj['characters'][charaId5].chrName;
+                    //キャラ6
+                    charaId6 = currentMapTip.events[orgEvtName].chara6;
+                    if(charaId6 != "") chara6 = projectDataObj['characters'][charaId6].chrName;
+                    //バトルオーダー
+                    battleOrders = currentMapTip.events[orgEvtName]['battleOrders'];
                 }
             } else {
                 if (registeredFlg) {
@@ -1909,16 +1924,22 @@ function setEvent(eventName, objFlg = false) {
                     isBoss = currentMapTip.object.events[orgEvtName].isBoss;
                     //キャラ1
                     charaId1 = currentMapTip.object.events[orgEvtName].chara1;
-                    var chrIndex1 = currentMapTip.object.events[orgEvtName].chara1;
-                    chara1 = projectDataObj['characters'][chrIndex1].chrName;
+                    if(charaId1 != "") chara1 = projectDataObj['characters'][charaId1].chrName;
                     //キャラ2
                     charaId2 = currentMapTip.object.events[orgEvtName].chara2;
-                    var chrIndex2 = currentMapTip.object.events[orgEvtName].chara2;
-                    chara2 = projectDataObj['characters'][chrIndex2].chrName;
+                    if(charaId2 != "") chara2 = projectDataObj['characters'][charaId2].chrName;
                     //キャラ3
                     charaId3 = currentMapTip.object.events[orgEvtName].chara3;
-                    var chrIndex3 = currentMapTip.object.events[orgEvtName].chara3;
-                    chara3 = projectDataObj['characters'][chrIndex3].chrName;
+                    if(charaId3 != "") chara3 = projectDataObj['characters'][charaId3].chrName;
+                    //キャラ4
+                    charaId4 = currentMapTip.object.events[orgEvtName].chara4;
+                    if(charaId4 != "") chara4 = projectDataObj['characters'][charaId4].chrName;
+                    //キャラ5
+                    charaId5 = currentMapTip.object.events[orgEvtName].chara5;
+                    if(charaId5 != "") chara5 = projectDataObj['characters'][charaId5].chrName;
+                    //キャラ6
+                    charaId6 = currentMapTip.object.events[orgEvtName].chara6;
+                    if(charaId6 != "") chara6 = projectDataObj['characters'][charaId6].chrName;
                 }
             }
             html += '<p>【バトル】</p>';
@@ -1931,22 +1952,70 @@ function setEvent(eventName, objFlg = false) {
             }
             html += '<div style="overflow:hidden;">'; //高さ認識用
             html += '<div class="eventCharacterContainer">';
-            html += '<p id="chara1" title="' + charaId1 +'">' + chara1 + '</p>';
+            html += '<button onclick="delBattleChara(\'1\')">削除</button><p id="chara1" title="' + charaId1 +'">' + chara1 + '</p>';
             html += '<div class="eventCharacter">';
             html += document.getElementById('characters').innerHTML;
             html += '</div>';
             html += '</div>';
             html += '<div class="eventCharacterContainer">';
-            html += '<p id="chara2" title="' + charaId2 +'">' + chara2 + '</p>';
+            html += '<button onclick="delBattleChara(\'2\')">削除</button><p id="chara2" title="' + charaId2 +'">' + chara2 + '</p>';
             html += '<div class="eventCharacter">';
             html += document.getElementById('characters').innerHTML;
             html += '</div>';
             html += '</div>';
             html += '<div class="eventCharacterContainer">';
-            html += '<p id="chara3" title="' + charaId3 +'">' + chara3 + '</p>';
+            html += '<button onclick="delBattleChara(\'3\')">削除</button><p id="chara3" title="' + charaId3 +'">' + chara3 + '</p>';
             html += '<div class="eventCharacter">';
             html += document.getElementById('characters').innerHTML;
             html += '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<p>味方キャラクターを選択</p>';
+            html += '<div style="overflow:hidden;">'; //高さ認識用
+            html += '<div class="eventCharacterContainer">';
+            html += '<button onclick="delBattleChara(\'4\')">削除</button><p id="chara4" title="' + charaId4 +'">' + chara4 + '</p>';
+            html += '<div class="eventCharacter">';
+            html += document.getElementById('characters').innerHTML;
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="eventCharacterContainer">';
+            html += '<button onclick="delBattleChara(\'5\')">削除</button><p id="chara5" title="' + charaId5 +'">' + chara5 + '</p>';
+            html += '<div class="eventCharacter">';
+            html += document.getElementById('characters').innerHTML;
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="eventCharacterContainer">';
+            html += '<button onclick="delBattleChara(\'6\')">削除</button><p id="chara6" title="' + charaId6 +'">' + chara6 + '</p>';
+            html += '<div class="eventCharacter">';
+            html += document.getElementById('characters').innerHTML;
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div id="battleEventContainer">';
+            html += '<p>バトルオーダー</p>';
+            if (registeredFlg == false) {
+                html += '<p>新規</p>';
+            } else {
+                html += '<p>既存</p>';
+            }
+            html += '<button onClick="setBattleOrder(\'talk\')" value="talk">talk</button>';
+            html += '<button onClick="setBattleOrder(\'skill\')" value="skill">skill</button>';
+            html += '<button onClick="setBattleOrder(\'lose\')" value="lose">lose</button>';
+            html += '<div id="battleOrderContainer">';
+            html += '</div>';
+            html += '<div style="display: none;">';
+            var battleOrderTypes = ['talk','skill','lose'];
+            battleOrderTypes.forEach(function(Order){
+                html += '<div id="battle_'+Order+'">';
+                html += '<div name="battle_order" alt="'+Order+'" class="eachBattleOrderContainer">'; //★この情報を頼りに保存する
+                html += '<button onClick="delBattleOrder(this)">削除</button>';
+                html += '<button onClick="shiftBattleOrder(this,\'up\')">↑</button>';
+                html += '<button onClick="shiftBattleOrder(this,\'down\')">↓</button>';
+                html += getEditBattleOrderArea(Order);
+                html += '</div>';
+                html += '</div>';
+            });
             html += '</div>';
             html += '</div>';
             if (objFlg == false) {
@@ -1955,6 +2024,12 @@ function setEvent(eventName, objFlg = false) {
                 html += '<p id="registEvent" onclick="registEventToObj(\'battle\',true)">この内容でイベント登録</p>';
             }
             editEvent.innerHTML = html;
+
+            // html反映後、既存のバトルオーダーの反映
+            if (registeredFlg){
+                getRegisteredBattleOrdersContainer(battleOrders); //枠組み（コンテナのみ）
+                setRegisteredBattleOrders(battleOrders); // 枠組みの中の値（登録済みの内容）
+            }
 
             break;
         case 'tool':
@@ -2486,6 +2561,196 @@ function setEvent(eventName, objFlg = false) {
                 cnt++;
             });
             break;
+    }
+}
+
+function delBattleChara(index) {
+    var inTxt = '';
+    switch(index) {
+        case "1": inTxt = 'キャラ1'; break;
+        case "2": inTxt = 'キャラ2（敵メイン）'; break;
+        case "3": inTxt = 'キャラ3'; break;
+        case "4": inTxt = 'キャラ4'; break;
+        case "5": inTxt = 'キャラ5（味方メイン）'; break;
+        case "6": inTxt = 'キャラ6'; break;
+    }
+    document.getElementById("chara"+index).innerText = inTxt;
+}
+
+function delSkillWipe(btnEle) {
+    btnEle.nextElementSibling.src = "dummy";
+}
+
+//バトル命令の設定領域をセットする
+function setBattleOrder(type) {
+
+    var ordersDiv = document.getElementById("battleOrderContainer");
+
+    switch(type) {
+        case 'talk':
+            ordersDiv.appendChild(document.getElementById("battle_talk").firstChild.cloneNode(true));
+        break;
+        case 'skill':
+            ordersDiv.appendChild(document.getElementById("battle_skill").firstChild.cloneNode(true));
+        break;
+        case 'lose':
+            ordersDiv.appendChild(document.getElementById("battle_lose").firstChild.cloneNode(true));
+        break;
+    }
+}
+
+//orderのバトル編集エリアを返す
+function getEditBattleOrderArea(order) {
+
+    var html = '';
+
+    switch(order) {
+        case 'talk':
+            //talkと一緒
+            html += '<span>■talk ：</span>';
+            html += '<img src="dummy" class="talkWipe">';
+            html += '<div class="battleTalkContainer">';
+            html += document.getElementById('wipeContainer').innerHTML;
+            html += '</div>';
+            html += '<textarea id="" class="talkContent" placeholder="バトルトーク"></textarea>';
+        break;
+        case 'skill':
+            //fromキャラ、toキャラ、技番号1〜6、ダメージ量、トーク、揺れフラグ
+            html += '<span>■skill：</span>';
+            html += '<span>from</span>';
+            html += document.getElementById('charactersSelectBoxFrom').innerHTML;
+            html += '<span> to</span>';
+            html += document.getElementById('charactersSelectBoxTo').innerHTML;
+            html += '<span> スキル</span>';
+            html += '<select id="" name="" class="skillIndex">';
+            for (var i=1; i<7; i++) {
+                var spStr = i>=5 ? "(大技)" : "" ;
+                html += '<option value="'+i+'">'+i+spStr+'</option>';
+            }
+            html += '</select>';
+            html += '<span> ダメージ</span>';
+            html += '<input type="text" name="" class="skillDamage" id="" value="" placeholder="ダメージ量">';
+            html += '  ';
+            html += '<button onclick="delSkillWipe(this)">削除</button>';
+            html += '<img src="dummy" class="skillTalkWipe">';
+            html += '<div class="skillTalkContainer">';
+            html += document.getElementById('wipeContainer').innerHTML;
+            html += '</div>';
+            html += '<textarea id="" class="skillTalkContent" placeholder="スキルトーク（※なしの場合は未入力のままにしてください）"></textarea>';
+            html += '<span>スキル揺れ</span>';
+            html += '<select id="" name="" class="skillShakeFlg">';
+            html += '<option value="0">無し</option>';
+            html += '<option value="1">有り</option>';
+            html += '</select>';
+        break;
+        case 'lose':
+            //設定値は特になし
+            html += '<span>■lose ：</span>';
+            html += '<span style="color: red">※最後に設定してね</span>';
+        break;
+    }
+
+    return html;
+
+}
+
+//バトル命令削除
+function delBattleOrder(btnEle) {
+    if (confirm("削除してもOK?")) {
+        btnEle.parentNode.remove();
+    }
+}
+
+//バトル命令の順番シフト
+function shiftBattleOrder(btnEle, mode) {
+
+    var parentDiv = btnEle.parentNode.parentNode;
+    
+    switch(mode) {
+        case 'up':
+            //一番上だった場合は注意
+            if (btnEle.parentNode.previousElementSibling != null) {
+                parentDiv.insertBefore(btnEle.parentNode, btnEle.parentNode.previousElementSibling);
+            }
+        break;
+        case 'down':
+            //一番下だった場合は注意
+            if (btnEle.parentNode.nextElementSibling != null) {
+                parentDiv.insertBefore(btnEle.parentNode.nextElementSibling, btnEle.parentNode);
+            }
+        break;
+    }
+}
+
+//既存のバトルオーダーのコンテナを返す（コンテナのみ、詰めるのはsetRegisteredBattleOrders）
+function getRegisteredBattleOrdersContainer(battleOrders) {
+    //タイプで回してまずはhtmlに空でいいので保存する
+    var keys = Object.keys(battleOrders);
+    for (var i=0; i<keys.length; i++) {
+        switch(battleOrders[i]['type']) {
+            case 'talk':
+                setBattleOrder('talk');
+            break;
+            case 'skill':
+                setBattleOrder('skill');
+            break;
+            case 'lose':
+                setBattleOrder('lose');
+            break;
+        }
+    }
+}
+
+//既存のバトルオーダーをコンテナに詰めていく（データ登録の時の要領で）
+function setRegisteredBattleOrders(battleOrders) {
+    //バトルオーダー
+    var orders = document.getElementsByName("battle_order");
+    for(var i=0; i<orders.length; i++) {
+        if (i >= orders.length-3) continue; //最後の３つ（コピー元）はスキップ（無理矢理だけど）
+        switch(battleOrders[i]['type']){ //orders(コンテナ)とbattleOrders(既存のオーダー)は連動しているのでこれでいけるはず
+            case 'talk':
+                //保存の時とは逆に、htmlに設定していく
+                var wipeEle = orders[i].getElementsByClassName("talkWipe");
+                wipeEle[0].src = document.getElementById(battleOrders[i]['wipe']).src;
+
+                var talkEle = orders[i].getElementsByClassName("talkContent");
+                talkEle[0].value = battleOrders[i]['content'];
+            break;
+            case 'skill':   
+                //保存の時とは逆に、htmlに設定していく
+                var skillEle = orders[i].getElementsByClassName("skillFrom");
+                for (var j=0; j<6; j++) {
+                    if (skillEle[0].options[j].value == battleOrders[i]['from']) skillEle[0].options[j].selected = true;
+                }
+
+                var skillEle = orders[i].getElementsByClassName("skillTo");
+                for (var j=0; j<6; j++) {
+                    if (skillEle[0].options[j].value == battleOrders[i]['to']) skillEle[0].options[j].selected = true;
+                }
+
+                var skillEle = orders[i].getElementsByClassName("skillIndex");
+                skillEle[0].value = battleOrders[i]['skillIndex']; 
+
+                var skillEle = orders[i].getElementsByClassName("skillDamage");
+                skillEle[0].value = battleOrders[i]['damage']; 
+
+                var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
+                if (battleOrders[i]['wipe'] != "dummy") wipeEle[0].src = document.getElementById(battleOrders[i]['wipe']).src;
+
+                var skillEle = orders[i].getElementsByClassName("skillTalkContent");
+                skillEle[0].value = battleOrders[i]['content'];
+
+                var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
+                if (skillEle[0].options[0].value == battleOrders[i]['shake']) skillEle[0].options[0].selected = true;
+                if (skillEle[0].options[1].value == battleOrders[i]['shake']) skillEle[0].options[1].selected = true;
+
+            break;
+            case 'lose':
+                //負けの時は何も入れない
+
+            break;
+        }
+
     }
 }
 
@@ -3858,21 +4123,166 @@ function registEventToObj(evtName, objFlg = false) {
 
         case 'battle':
             if (currentRegisteredEvent == '') {
-                //var evtNameKey = getEventKey(evtName, objFlg);
                 if (objFlg == false) {
                     currentMapTip.events[evtNameKey] = new Object(); 
                     currentMapTip.events[evtNameKey].charaGroup = document.getElementById('charaGroup').value;
                     currentMapTip.events[evtNameKey].isBoss = document.getElementById('isBoss').value;
-                    currentMapTip.events[evtNameKey]['chara1'] = document.getElementById('chara1').title;
-                    currentMapTip.events[evtNameKey]['chara2'] = document.getElementById('chara2').title;
-                    currentMapTip.events[evtNameKey]['chara3'] = document.getElementById('chara3').title;
+                    currentMapTip.events[evtNameKey]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.events[evtNameKey]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.events[evtNameKey]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.events[evtNameKey]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.events[evtNameKey]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.events[evtNameKey]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+
+                    //バトルオーダー
+                    currentMapTip.events[evtNameKey]['battleOrders'] = new Object();
+                    var orders = document.getElementsByName("battle_order");
+                    for(var i=0; i<orders.length; i++) {
+
+                        if (i >= orders.length-3) continue; //最後の３つ（コピー元）はスキップ（無理矢理だけど）
+
+                        switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
+                            case 'talk':
+
+                                currentMapTip.events[evtNameKey]['battleOrders'][i] = new Object();
+
+                                //まずはタイプを設定
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['type'] = 'talk';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var wipeEle = orders[i].getElementsByClassName("talkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName;
+
+                                var talkEle = orders[i].getElementsByClassName("talkContent");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['content'] = talkEle[0].value; 
+                            break;
+                            case 'skill':
+
+                                currentMapTip.events[evtNameKey]['battleOrders'][i] = new Object();
+
+                                //まずはタイプを設定
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['type'] = 'skill';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var skillEle = orders[i].getElementsByClassName("skillFrom");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['from'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTo");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['to'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillIndex");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillDamage");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['damage'] = skillEle[0].value; 
+
+                                var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTalkContent");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['content'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['shake'] = skillEle[0].value;
+
+                            break;
+                            case 'lose':
+                                currentMapTip.events[evtNameKey]['battleOrders'][i] = new Object();
+
+                                //まずはタイプを設定
+                                currentMapTip.events[evtNameKey]['battleOrders'][i]['type'] = 'lose';
+
+                                //負けの時はこれ以上何も入れない
+
+                            break;
+                        }
+
+                    }
+
                 } else {
                     currentMapTip.object.events[evtNameKey] = new Object(); 
                     currentMapTip.object.events[evtNameKey].charaGroup = document.getElementById('charaGroup').value;
                     currentMapTip.object.events[evtNameKey].isBoss = document.getElementById('isBoss').value;
-                    currentMapTip.object.events[evtNameKey]['chara1'] = document.getElementById('chara1').title;
-                    currentMapTip.object.events[evtNameKey]['chara2'] = document.getElementById('chara2').title;
-                    currentMapTip.object.events[evtNameKey]['chara3'] = document.getElementById('chara3').title;
+                    currentMapTip.object.events[evtNameKey]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.object.events[evtNameKey]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.object.events[evtNameKey]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.object.events[evtNameKey]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.object.events[evtNameKey]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.object.events[evtNameKey]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+
+                    //バトルオーダー
+                    currentMapTip.object.events[evtNameKey]['battleOrders'] = new Object();
+                    var orders = document.getElementsByName("battle_order");
+                    for(var i=0; i<orders.length; i++) {
+
+                        if (i >= orders.length-3) continue; //最後の３つ（コピー元）はスキップ（無理矢理だけど）
+
+                        switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
+                            case 'talk':
+
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i] = new Object();
+
+                                //まずはタイプを設定
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['type'] = 'talk';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var wipeEle = orders[i].getElementsByClassName("talkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName;
+
+                                var talkEle = orders[i].getElementsByClassName("talkContent");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['content'] = talkEle[0].value; 
+                            break;
+                            case 'skill':
+
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i] = new Object();
+
+                                //まずはタイプを設定
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['type'] = 'skill';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var skillEle = orders[i].getElementsByClassName("skillFrom");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['from'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTo");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['to'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillIndex");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillDamage");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['damage'] = skillEle[0].value;
+
+                                var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTalkContent");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['content'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['shake'] = skillEle[0].value; 
+
+                            break;
+                            case 'lose':
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i] = new Object();
+
+                                //まずはタイプを設定
+                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['type'] = 'lose';
+
+                                //負けの時はこれ以上何も入れない
+
+                            break;
+                        }
+
+                    }
+
                 }
 
             } else {
@@ -3880,17 +4290,162 @@ function registEventToObj(evtName, objFlg = false) {
                 if (objFlg == false) {
                     currentMapTip.events[currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
                     currentMapTip.events[currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
-                    currentMapTip.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').title;
-                    currentMapTip.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').title;
-                    currentMapTip.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').title;
+                    currentMapTip.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.events[currentRegisteredEvent]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.events[currentRegisteredEvent]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.events[currentRegisteredEvent]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+
+                    //バトルオーダー
+                    currentMapTip.events[currentRegisteredEvent]['battleOrders'] = new Object(); //既存の場合でも一から全部入れ直す
+                    var orders = document.getElementsByName("battle_order");
+                    for(var i=0; i<orders.length; i++) {
+
+                        if (i >= orders.length-3) continue; //最後の３つ（コピー元）はスキップ（無理矢理だけど）
+
+                        switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
+                            case 'talk':
+
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+
+                                //まずはタイプを設定
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'talk';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var wipeEle = orders[i].getElementsByClassName("talkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName;
+
+                                var talkEle = orders[i].getElementsByClassName("talkContent");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['content'] = talkEle[0].value; 
+                            break;
+                            case 'skill':
+
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+
+                                //まずはタイプを設定
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'skill';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var skillEle = orders[i].getElementsByClassName("skillFrom");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['from'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTo");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['to'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillIndex");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillDamage");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['damage'] = skillEle[0].value;
+
+                                var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTalkContent");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['content'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['shake'] = skillEle[0].value;
+
+                            break;
+                            case 'lose':
+
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+
+                                //まずはタイプを設定
+                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'lose';
+
+                                //負けの時はこれ以上何も入れない
+
+                            break;
+                        }
+                    }
+
                 } else {
                     currentMapTip.object.events[currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
                     currentMapTip.object.events[currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').title;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').title;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').title;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.object.events[currentRegisteredEvent]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+
+                    //バトルオーダー
+                    currentMapTip.object.events[currentRegisteredEvent]['battleOrders'] = new Object(); //既存の場合でも一から全部入れ直す
+                    var orders = document.getElementsByName("battle_order");
+                    for(var i=0; i<orders.length; i++) {
+
+                        if (i >= orders.length-3) continue; //最後の３つ（コピー元）はスキップ（無理矢理だけど）
+
+                        switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
+                            case 'talk':
+
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+
+                                //まずはタイプを設定
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'talk';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var wipeEle = orders[i].getElementsByClassName("talkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName;
+
+                                var talkEle = orders[i].getElementsByClassName("talkContent");
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['content'] = talkEle[0].value; 
+                            break;
+                            case 'skill':
+
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+
+                                //まずはタイプを設定
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'skill';
+                                
+                                //次にタイプ独自の設定値を設定していく
+                                var skillEle = orders[i].getElementsByClassName("skillFrom");
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['from'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTo");
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['to'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillIndex");
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillDamage");
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['damage'] = skillEle[0].value;
+
+                                var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
+                                var fullSrc = decodeURI(wipeEle[0].currentSrc);
+                                var imgName = fullSrc.split("/").reverse()[0];
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillTalkContent");
+                                currentMapTip.object.object.events[currentRegisteredEvent]['battleOrders'][i]['content'] = skillEle[0].value; 
+
+                                var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['shake'] = skillEle[0].value;
+
+                            break;
+                            case 'lose':
+
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+
+                                //まずはタイプを設定
+                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'lose';
+
+                                //負けの時はこれ以上何も入れない
+
+                            break;
+                        }
+                    }
                 }
-            }   
+            }
         break;
         case 'tool':
             if (currentRegisteredEvent == '') {
