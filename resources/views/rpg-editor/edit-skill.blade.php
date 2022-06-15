@@ -17,11 +17,14 @@
             <input type="submit" value="新規登録">
             <div><span>技名</span><input type="text" name="skillName" id="" cols="30"></div>
             <div><span>威力</span><input type="text" name="skillPower" id="" style="pointer-events: none;"></div>
-            <div><span>技分類</span><select id="" name="skillType">
+            <div>
+            <span>技分類</span>
+            <select id="" name="skillType">
             @for($i=1; $i < 3; $i++)
                 <option value="{{$i}}">{{$i}}</option>
             @endfor
-            </select></div>
+            </select>
+            </div>
             <p>画像を選択してください</p>
             <div class="eachSkillContainer"><input type="radio" name="skillImagePath" id="" value="dummy" checked="true">dummy(通常スキル)</div>
             @foreach($pngFiles as $charaName)
@@ -36,7 +39,7 @@
         </div>
     </div>
 
-    <span>既存スキル↓========================================================================================================</span>
+    <p>既存スキル↓========================================================================================================</p>
 
     <!-- 既存スキル -->
     <div id="oldSkills">

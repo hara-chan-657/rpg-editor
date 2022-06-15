@@ -246,6 +246,11 @@ margin: 0px 3px;
     display: block;
 }
 
+#newSkill {
+    /* 高さ認識用 */
+    overflow:hidden;
+}
+
 .eachSkillContainer {
     /* display: inline; */
     float: left;
