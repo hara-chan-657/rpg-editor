@@ -63,7 +63,8 @@ class ToolController extends Controller
 
 
     public function deleteTool(Request $request) {
-        echo 'ここへきたよーん';
+        DB::table('tools')->where('id', $request->id)->delete();
+        return $this->editTool($request);
     }
 
     //projectData.jsonを更新する 

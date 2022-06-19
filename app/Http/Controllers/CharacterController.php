@@ -224,7 +224,8 @@ class CharacterController extends Controller
     }
 
     public function deleteCharacter(Request $request) {
-        echo 'ここにきたよ';
+        DB::table('characters')->where('id', $request->id)->delete();
+        return $this->editCharacter($request);
     }
 
     //projectData.jsonを更新する 

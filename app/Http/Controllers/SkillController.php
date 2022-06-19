@@ -90,7 +90,8 @@ class SkillController extends Controller
 
 
     public function deleteSkill(Request $request) {
-        echo 'ここへきたぜ';
+        DB::table('skills')->where('id', $request->id)->delete();
+        return $this->editSkill($request);
     }
 
     //projectData.jsonを更新する 
