@@ -16,6 +16,11 @@
 
     @endcomponent
 
+    <form name="" action="/rpg-editor/public" method="post">
+    {{ csrf_field() }}
+        <input type="submit" value="プロジェクト選択画面へ戻る">
+    </form>
+
     <div id="mapContainer">
         <button onclick="switchCanvasSize()">キャンバス大きさ変更</button>
         <button onclick="setTurnChipMode()" id="setTurnChipMode">マップ交互編集モード</button>

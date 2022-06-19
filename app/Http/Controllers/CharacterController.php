@@ -19,7 +19,7 @@ class CharacterController extends Controller
         //$specialSkills = $this->getSpecialSkills($request->project);
 
         //return view('rpg-editor.edit-MainCharacter', ['pngFiles'=>$pngFiles, 'project'=>$request->project, 'charas'=>$charas, 'skills'=>$skills, 'specialSkills'=>$specialSkills]);
-        return view('rpg-editor.edit-MainCharacter', ['charaFiles'=>$charaFiles]);
+        return view('rpg-editor.edit-MainCharacter', ['charaFiles'=>$charaFiles, 'project'=>$request->project]);
     }
 
     //rpg-Playerに登録してある画像ファイル情報を取得する（まだキャラクターとしてDBに保存しているとは限らない）

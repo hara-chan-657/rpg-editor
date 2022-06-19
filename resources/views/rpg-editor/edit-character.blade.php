@@ -6,6 +6,13 @@
 @endcomponent
 
 
+<form action="/rpg-editor/public/getProjectData" method="POST">
+{{ csrf_field() }}
+    <input type="hidden" name="oldProjectName" id="" value="{{$project}}">
+    <input type="submit" value="プロジェクト編集画面へ戻る">
+</form>
+
+
 @section('select-project')
 
     <!-- 新規キャラクタ -->
