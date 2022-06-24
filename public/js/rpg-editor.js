@@ -108,11 +108,6 @@ var objLists = document.getElementById('objLists');
 var objEventLists = document.getElementById('objEventLists');
 //マップ保存
 var saveMap = document.getElementById('saveMap');
-// //キャラオブジェクト
-// var objCharas = document.getElementsByClassName('obj_charas');
-// //ツールオブジェクト
-// var objTools = document.getElementsByClassName('obj_tools');
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////　　以下イベント   ////////////////////////////////////////////
@@ -121,7 +116,6 @@ window.addEventListener('load', setDefault, false);
 for (var i=0; i<maps.length; i++) {
 	maps[i].addEventListener('click', function(evt) {setEditMap(evt);}, false);
 }
-//setStartProject.addEventListener('click', setStartProjectThisMap, false);
 saveStartPos.addEventListener('click', saveStartPosition, false);
 stopEditStartPos.addEventListener('click', stopEditStartPosition, false);
 currentMapCanvas.addEventListener('click', function(evt) {
@@ -133,9 +127,6 @@ currentMapCanvas.addEventListener('click', function(evt) {
 }, false);
 currentMapCanvas.addEventListener('mousemove', function (evt) {showCursorPos(evt);}, false);
 saveMap.addEventListener('click', saveMapToServer, false);
-// for (var i=0; i<objCharas.length; i++) {
-//     objCharas[i].addEventListener('click', function(evt) {selectObjectImage(evt);}, false);
-// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////　　以下ファンクション   //////////////////////////////////////////
@@ -481,10 +472,6 @@ function changeTargetMoveChip() {
     var orders = currentMoveChip.getElementsByClassName("orders");
     Array.from(orders).forEach(function(event) {
 
-        // //加算用変数
-        // var tmpFromY = 0;
-        // var tmpFromX = 0;
-
         //ordersを1個ずつに分解、ループ、描画していく
         var charas = event.innerText.split('');
 
@@ -577,10 +564,6 @@ function setTargetMoveChip(evt) {
     // 線を描画を実行
     currentMapContext.stroke() ;
 
-    //編集対象の情報を編集
-    //currentMoveChip.getElementByIdを使う
-    //書き込む
-
     //start
     var fromX = currentMoveChip.getElementsByClassName("fromX");
     Array.from(fromX).forEach(function(event) {event.innerText = tmpColNum;});
@@ -591,8 +574,6 @@ function setTargetMoveChip(evt) {
 
 //削除オブジェクトの位置をセットする。
 function setDeleteObjectChip(evt) {
-    //evtから位置を取り出して、XYを画面にセット
-
     //クリックした座標を取得する
     var mousePos = getMousePosition(currentMapCanvas, evt);
 
@@ -1548,7 +1529,6 @@ function registObject(objectName) {
     //イベント編集ウィンドウ、オブジェクト追加ウィンドウを閉じて、イベントコンテナ更新
     editEvent.style.display = 'none';
     editObjectContainer.style.display = 'none';
-    //objLists.style.display = 'none';
     objLists.innerHTML = '';
     updateMapEventHTML();
 }
@@ -2355,8 +2335,6 @@ function setEvent(eventName, objFlg = false) {
                     }
                 }
                 html += '    </div>';
-                //オブジェクトセットの際は、イベント編集ウィンドウをお借りする
-                // editEvent.innerHTML = html;
                 html += '  </div>';
             }
             html += '</div>';
@@ -3366,10 +3344,6 @@ function drawGrid(){
                 currentMapContext.beginPath () ;
                 // レクタングルの座標(50,50)とサイズ(75,50)を指定
                 currentMapContext.rect(j*mapLength ,i*mapLength , mapLength, mapLength);
-                // 塗りつぶしの色
-                //currentMapContext.fillStyle = "rgba(255,0,0,0.8)" ;
-                // 塗りつぶしを実行
-                // currentMapContext.fill();
                 // 線の色
                 currentMapContext.strokeStyle = "purple" ;
                 // 線の太さ
@@ -3386,10 +3360,6 @@ function drawCurrentChipBorder() {
     currentMapContext.beginPath () ;
     // レクタングルの座標(50,50)とサイズ(75,50)を指定
     currentMapContext.rect(colNum*mapLength ,rowNum*mapLength , 32, 32);
-    // 塗りつぶしの色
-    //currentMapContext.fillStyle = "lime"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
-    // 塗りつぶしを実行
-    //currentMapContext.fill();
     // 線の色
     currentMapContext.strokeStyle = "red";
     // 線の太さ
@@ -3409,10 +3379,6 @@ function drawScreenBorder() {
     currentMapContext.beginPath () ;
     // レクタングルの座標(50,50)とサイズ(75,50)を指定
     currentMapContext.rect((colNum*mapLength)-viewCanvasHalfWidth ,(rowNum*mapLength)-viewCanvasHalfHeight , 736, 480);
-    // 塗りつぶしの色
-    //currentMapContext.fillStyle = "lime"; //イベントは設定済みだが、トリガーを設定してない場合、黄色
-    // 塗りつぶしを実行
-    //currentMapContext.fill();
     // 線の色
     currentMapContext.strokeStyle = "red";
     // 線の太さ
