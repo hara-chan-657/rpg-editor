@@ -2192,9 +2192,11 @@ function setEvent(eventName, objFlg = false) {
             var chips = [];
             var chipIndex = 1;
             var drawSpeed;
+            var startSound = '';
             if (objFlg == false) {
                 if (registeredFlg) {
                     drawSpeed = currentMapTip.events[orgEvtName].drawSpeed;
+                    startSound = currentMapTip.events[orgEvtName].startSound;
                     while(currentMapTip.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
                         chips.push(currentMapTip.events[orgEvtName]['chip_'+chipIndex]);
                         chipIndex++;
@@ -2203,6 +2205,7 @@ function setEvent(eventName, objFlg = false) {
             } else {
                 if (registeredFlg) {
                     drawSpeed = currentMapTip.object.events[orgEvtName].drawSpeed;
+                    startSound = currentMapTip.object.events[orgEvtName].startSound;
                     while(currentMapTip.object.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
                         chips.push(currentMapTip.object.events[orgEvtName]['chip_'+chipIndex]);
                         chipIndex++;
@@ -2222,6 +2225,7 @@ function setEvent(eventName, objFlg = false) {
             html += '      <p>対象のチップ</p>';
             html += '      <p>from（<span class="fromX"></span>：<span class="fromY"></span>）</p>';
             html += '      <p>to（<span class="toX"></span>：<span class="toY"></span>）</p>';
+            html += '      <br>';
             html += '      <p>命令</p>';
             html += '      <p>';
             html += '        <button onclick="addOrder(\'3\')">←</button>';
@@ -2232,25 +2236,36 @@ function setEvent(eventName, objFlg = false) {
             html += '        <button onclick="delOrder()">削除</button>';
             html += '      </p>';
             html += '      <p class="orders"></p>';
+            html += '      <br>';
             html += '      <p>移動後削除<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
-            html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" onChange="">しない</input>';
-            html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" onChange="">する</input>';
-            html += '    <p>スライド<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
-            html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="false">しない</input>';
-            html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="true">する</input>';
-            html += '    <p>固定向き</p>';
-            html += '    <p class="fixDir"></p>';
-            html += '    <p>';
-            html += '      <button onclick="setFixDir(\'3\')">←</button>';
-            html += '      <button onclick="setFixDir(\'2\')">→</button>';
-            html += '      <button onclick="setFixDir(\'1\')">↑</button>';
-            html += '      <button onclick="setFixDir(\'0\')">↓</button>';
-            html += '      <button onclick="delFixDir()">削除</button>';
-            html += '    </p>';
+            html += '        <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" onChange="">しない</input>';
+            html += '        <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" onChange="">する</input>';
+            html += '      <br>';
+            html += '      <br>';
+            html += '      <p class="finishSound">移動後サウンド<span style="color:red; font-size:10px;"> ※任意</span></p>';
+            html +=        getSoundLists();
+            html += '      <br>';
+            html += '      <br>';
+            html += '      <p>スライド<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
+            html += '        <input type="checkbox" name="slideFlg" class="slideFlg" value="false">しない</input>';
+            html += '        <input type="checkbox" name="slideFlg" class="slideFlg" value="true">する</input>';
+            html += '      <br>';
+            html += '      <br>';
+            html += '      <p>固定向き</p>';
+            html += '      <p class="fixDir"></p>';
+            html += '      <p>';
+            html += '        <button onclick="setFixDir(\'3\')">←</button>';
+            html += '        <button onclick="setFixDir(\'2\')">→</button>';
+            html += '        <button onclick="setFixDir(\'1\')">↑</button>';
+            html += '        <button onclick="setFixDir(\'0\')">↓</button>';
+            html += '        <button onclick="delFixDir()">削除</button>';
+            html += '      </p>';
+            html += '      <br>';
             html += '      <p>追加オブジェクト</p>';
-            html += '      <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
-            html += '      <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
-            html += '      <div class="newMoveObjInfo"></div>';
+            html += '        <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
+            html += '        <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
+            html += '        <div class="newMoveObjInfo"></div>';
+            html += '      <br>';
             html += '    </div>';
             html += '  </div>';
             // editEvent.innerHTML = html;
@@ -2272,6 +2287,7 @@ function setEvent(eventName, objFlg = false) {
                 html += '    <p>対象のチップ</p>';
                 html += '    <p>from（<span class="fromX">'+ chips[i]['fromX']+'</span>：<span class="fromY">'+ chips[i]['fromY'] +'</span>）</p>';
                 html += '    <p>to（<span class="toX">'+ toX +'</span>：<span class="toY">'+ toY +'</span>）</p>';
+                html += '      <br>';
                 html += '    <p>命令</p>';
                 html += '    <p>';
                 html += '      <button onclick="addOrder(\'3\')">←</button>';
@@ -2282,18 +2298,27 @@ function setEvent(eventName, objFlg = false) {
                 html += '      <button onclick="delOrder()">削除</button>';
                 html += '    </p>';
                 html += '    <p class="orders">'+ chips[i]['orders'] +'</p>';
+                html += '      <br>';
                 html += '    <p>移動後削除<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
                 var notDel = '';
                 var Del = '';
                 chips[i]['finishDelFlg'] == "true" ? Del = 'checked' : notDel = 'checked';
-                html += '    <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" '+ notDel +'>しない</input>';
-                html += '    <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" '+ Del +'>する</input>';
+                html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="false" '+ notDel +'>しない</input>';
+                html += '      <input type="checkbox" name="finishDelFlg" class="finishDelFlg" value="true" '+ Del +'>する</input>';
+                html += '      <br>';
+                html += '      <br>';
+                html += '      <p class="finishSound">移動後サウンド<span style="color:red; font-size:10px;"> ※任意</span></p>';
+                html +=        getSoundLists(chips[i]['finishSound']);
+                html += '      <br>';
+                html += '      <br>';
                 var notSlide = '';
                 var slide = '';
                 chips[i]['slideFlg'] == "true" ? slide = 'checked' : notSlide = 'checked';
                 html += '    <p>スライド<span style="color:red; font-size:10px;"> ※一つだけ選択</span></p>';
-                html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="false" '+ notSlide +'>しない</input>';
-                html += '    <input type="checkbox" name="slideFlg" class="slideFlg" value="true" '+ slide +'>する</input>';
+                html += '      <input type="checkbox" name="slideFlg" class="slideFlg" value="false" '+ notSlide +'>しない</input>';
+                html += '      <input type="checkbox" name="slideFlg" class="slideFlg" value="true" '+ slide +'>する</input>';
+                html += '    <br>';
+                html += '    <br>';
                 html += '    <p>固定向き</p>';
                 html += '    <p class="fixDir">'+ chips[i]['fixDir'] +'</p>';
                 var fixDir = '';
@@ -2304,6 +2329,7 @@ function setEvent(eventName, objFlg = false) {
                 html += '      <button onclick="setFixDir(\'0\')">↓</button>';
                 html += '      <button onclick="delFixDir()">削除</button>';
                 html += '    </p>';
+                html += '    <br>';
                 html += '    <p>追加オブジェクト</p>';
                 html += '      <button id="startSelectObjMode" onclick="startSelectObjMode()">オブジェクト選択を開始</button>';
                 html += '    <button id="deleteSelectObjMode" onclick="deleteSelectObjMode()">削除</button>';
@@ -2334,6 +2360,7 @@ function setEvent(eventName, objFlg = false) {
                         html += '      <p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
                     }
                 }
+                html += '      <br>';
                 html += '    </div>';
                 html += '  </div>';
             }
@@ -2346,6 +2373,8 @@ function setEvent(eventName, objFlg = false) {
             html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="9" '+ slow +'>遅い</input>';
             html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="6" '+ normal +'>普通</input>';
             html += '<input type="radio" name="moveSpeed" class="moveSpeed" value="3" '+ fast +'>速い</input>';
+            html += '<p id="startSound">移動開始サウンド<span style="color:red; font-size:10px;"> ※任意</span></p>';
+            html += getSoundLists(startSound);
             if (objFlg == false) {
                 html += '<p id="registEvent" onclick="registEventToObj(\'move\')">この内容でイベント登録</p>';
             } else {
@@ -4640,6 +4669,10 @@ function registEventToObj(evtName, objFlg = false) {
                         if (event.checked) currentMapTip.events[evtNameKey].drawSpeed =　event.value;
                     });
 
+                    //開始サウンド
+                    var startSoundEle = document.getElementById("startSound");
+                    currentMapTip.events[evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+
                     //ここからチップごと
                     var tmpIndex = 0;
                     var targetMoveChipContainer = document.getElementsByClassName("targetMoveChipContainer");
@@ -4651,35 +4684,39 @@ function registEventToObj(evtName, objFlg = false) {
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['fromX'] =　event1.innerText;
+                            currentMapTip.events[evtNameKey][chipNameKey]['fromX'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['fromY'] =　event1.innerText;
+                            currentMapTip.events[evtNameKey][chipNameKey]['fromY'] = event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['orders'] =　event1.innerText;
+                            currentMapTip.events[evtNameKey][chipNameKey]['orders'] = event1.innerText;
                         });
 
                         //finishDelFlg
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] = event1.value;
                         });
+
+                        //finishSound
+                        var finishSoundEle = event.getElementsByClassName("finishSound");
+                        currentMapTip.events[evtNameKey][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['slideFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['slideFlg'] = event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['fixDir'] =　event1.innerText;
+                            currentMapTip.events[evtNameKey][chipNameKey]['fixDir'] = event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -4708,8 +4745,12 @@ function registEventToObj(evtName, objFlg = false) {
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[evtNameKey].drawSpeed =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtNameKey].drawSpeed = event.value;
                     });
+
+                    //開始サウンド
+                    var startSoundEle = document.getElementById("startSound");
+                    currentMapTip.object.events[evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -4722,35 +4763,39 @@ function registEventToObj(evtName, objFlg = false) {
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromX'] =　event1.innerText;
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromX'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromY'] =　event1.innerText;
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromY'] = event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['orders'] =　event1.innerText;
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['orders'] = event1.innerText;
                         });
 
                         //finishDelFlg
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['finishDelFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['finishDelFlg'] = event1.value;
                         });
+
+                        //finishSound
+                        var finishSoundEle = event.getElementsByClassName("finishSound");
+                        currentMapTip.object.events[evtNameKey][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['slideFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['slideFlg'] = event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['fixDir'] =　event1.innerText;
+                            currentMapTip.object.events[evtNameKey][chipNameKey]['fixDir'] = event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -4781,8 +4826,12 @@ function registEventToObj(evtName, objFlg = false) {
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[currentRegisteredEvent].drawSpeed =　event.value;
+                        if (event.checked) currentMapTip.events[currentRegisteredEvent].drawSpeed = event.value;
                     });
+
+                    //開始サウンド
+                    var startSoundEle = document.getElementById("startSound");
+                    currentMapTip.events[currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
 
@@ -4814,6 +4863,10 @@ function registEventToObj(evtName, objFlg = false) {
                         Array.from(finishDelFlg).forEach(function(event1) {
                             if (event1.checked) currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
                         });
+
+                        //finishSound
+                        var finishSoundEle = event.getElementsByClassName("finishSound");
+                        currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
@@ -4852,8 +4905,12 @@ function registEventToObj(evtName, objFlg = false) {
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].drawSpeed =　event.value;
+                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].drawSpeed = event.value;
                     });
+
+                    //開始サウンド
+                    var startSoundEle = document.getElementById("startSound");
+                    currentMapTip.object.events[currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -4866,35 +4923,37 @@ function registEventToObj(evtName, objFlg = false) {
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromX'] =　event1.innerText;
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromX'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromY'] =　event1.innerText;
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromY'] = event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['orders'] =　event1.innerText;
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['orders'] = event1.innerText;
                         });
 
-                        //finishDelFlg
-                        var finishDelFlg = event.getElementsByClassName("finishDelFlg");
-                        Array.from(finishDelFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
-                        });
+                        //finishSound
+                        var finishSoundEle = event.getElementsByClassName("finishSound");
+                        currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
+
+                        //finishSound
+                        var finishSoundEle = event.getElementsByClassName("finishSound");
+                        currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['slideFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['slideFlg'] = event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fixDir'] =　event1.innerText;
+                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fixDir'] = event1.innerText;
                         });
 
                         //追加オブジェクト
