@@ -940,14 +940,11 @@ function addSceneEventContainer() {
 //マップ交互チップをデータにセットする
 function setTurnChipToData(evt) {
 
-    //現在選択中のイベントをクリア
-    // currentRegisteredEvent = '';
-
     //クリックした座標を取得する
     var mousePos = getMousePosition(currentMapCanvas, evt);
     //クリックしたマップチップを特定
-    colNum = Math.floor(mousePos.x/mapLength);
-    rowNum = Math.floor(mousePos.y/mapLength);
+    var colNum = Math.floor(mousePos.x/mapLength);
+    var rowNum = Math.floor(mousePos.y/mapLength);
 
     //jsonを編集
     if (turnChipPutMode) {
@@ -978,6 +975,82 @@ function setTurnChipToData(evt) {
 
     //マップの設定情報を描画
     reloadEditMap();
+
+}
+
+//アニメーション対象セルをデータにセットする
+function setAnimationCellToData(evt) {
+
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+    //クリックしたマップチップを特定
+    var tmpColNum = Math.floor(mousePos.x/mapLength);
+    var tmpRowNum = Math.floor(mousePos.y/mapLength);
+
+    //現在のアニメーション対象セルを取得
+    var cellsKeyLength = Object.keys(tmpAnimationCells).length;
+
+    //対象のセルを追加/削除（tmpAnimationCellsを編集→テキストを表示）
+    if (editAnimationType == 0) {//追加
+
+        var includeFlg = false;
+
+        //追加する前にもう選択してるかどうかみる
+        for (var i=0; i<cellsKeyLength; i++) {
+            if (tmpAnimationCells[i]["x"] == tmpColNum && tmpAnimationCells[i]["y"] == tmpRowNum) includeFlg = true;
+        }
+
+        //なければ追加
+        if (!includeFlg) {
+            tmpAnimationCells[cellsKeyLength] = new Object();
+            tmpAnimationCells[cellsKeyLength]["x"] = tmpColNum;
+            tmpAnimationCells[cellsKeyLength]["y"] = tmpRowNum;
+        }
+
+    } else {
+
+        var delFlg = false;
+
+        //削除対象があれば削除する
+        for (var i=0; i<cellsKeyLength; i++) {
+            if (tmpAnimationCells[i]["x"] == tmpColNum && tmpAnimationCells[i]["y"] == tmpRowNum && delFlg == false) { //delFlgの条件も入れないと、２回消しちゃうかも
+                delete tmpAnimationCells[i]; //deleteしただけじゃ、0。23456になっるのでずらす必要あり
+                //ずらす
+                delFlg = true;
+            }
+            if (delFlg) {
+
+                if (i == cellsKeyLength) break; //最後のやつを削除した場合は何もせす終了
+
+                //削除したポイントから+1のデータをずれ込ませる
+                tmpAnimationCells[i] = tmpAnimationCells[i+1];
+
+                if (i+1 == cellsKeyLength) delete tmpAnimationCells[i]; //最後のやつ(i)はずれ込ませた後はnullになるので削除
+            }
+        }
+    }
+
+    //対象セルを描画
+    currentMapContext.putImageData(evacuateCanvas, 0, 0);
+
+    //その後にアニメーションセル描画
+    for (var i=0; i<Object.keys(tmpAnimationCells).length; i++) {
+        // パスをリセット
+        currentMapContext.beginPath () ;
+        // レクタングルの座標(50,50)とサイズ(75,50)を指定
+        currentMapContext.rect(tmpAnimationCells[i]["x"]*mapLength ,tmpAnimationCells[i]["y"]*mapLength , 32, 32);
+        // 線の色
+        currentMapContext.strokeStyle = "orange";
+        // 線の太さ
+        currentMapContext.lineWidth =  3;
+        // 線を描画を実行
+        currentMapContext.stroke() ;
+    }
+
+    //対象セルテキストを表示
+    var cellsTxt = JSON.stringify( tmpAnimationCells );
+    document.getElementById("currentAnimationChips").innerText = cellsTxt;
+
 
 }
 
@@ -1045,6 +1118,11 @@ function showMapTipData(evt) {
 
     if (setDeleteObjectChipFlg) {
         setDeleteObjectChip(evt);
+        return;
+    }
+
+    if (editAnimationModeFlg) {
+        setAnimationCellToData(evt);
         return;
     }
 
@@ -1708,6 +1786,25 @@ function deleteEvent(objFlg = false) {
             }
         }
         //イベント編集ウィンドウを閉じる
+
+        if (editAnimationModeFlg) {//アニメーション編集中だったら戻す
+            //戻すよ
+            editAnimationModeFlg = false;
+            tmpAnimationCells = new Object();
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = '';
+            mapDataContainer.style.backgroundColor = '';
+            // editEvent.innerHTML = ''; //これはここでは消しちゃだめ（後でコピペするかもだから残しておく）
+            // editEvent.style.display = 'none'; //これはここでは消しちゃだめ（後でコピペするかもだから残しておく）
+
+            //画面リセット
+            //マップを描画
+            currentMapContext.drawImage(currentMapImage, 0, 0);
+
+            //マップの設定情報を描画
+            reloadEditMap();
+        }
+
         editEvent.style.display = 'none';
     }
 
@@ -2077,7 +2174,7 @@ function setEvent(eventName, objFlg = false) {
         case 'effect':
             var effectTypes = ['shake', 'reaction', 'animation'];
             html += '<p>【効果】</p>';
-            var effectType = "";  
+            var effectType = "";
             if (objFlg == false) {
                 if (registeredFlg) {
                     //エフェクトのタイプを取得
@@ -2113,6 +2210,59 @@ function setEvent(eventName, objFlg = false) {
                             currentEffectType = 'reaction';
                         break;
                         case 'animation':
+                            //アニメタイプと、画像と、表示セル（複数可）と、揺れフラグと、サウンド
+                            html += '<div id="selectEffectContainer">';
+                            html += '<p>※アニメーション</p>';
+                            html += '<button onclick="quitAddAnimationChip()">やめる</button>';
+                            html += '<button id="addAnimationChipMode" onclick="changeEditAnimationType(\'add\')" style="background-color: red">追加モード</button>';
+                            html += '<button id="delAnimationChipMode" onclick="changeEditAnimationType(\'del\')">削除モード</button>';
+                            //アニメーションタイプ
+                            html += '<br>';
+                            html += '<br>';
+                            html += getAnimationTypeLists(currentMapTip.events[orgEvtName].animeType);
+                            //画像
+                            html += '<br>';
+                            html += getFlashAnimationLists(currentMapTip.events[orgEvtName].flashAnimeType); //flashはテキストのみ（手動運用）
+                            html += '<br>';
+                            html += getObjectAnimationLists(currentMapTip.events[orgEvtName].objectAnimeType); //objectは、マップチップターンを利用する
+                            //セル
+                            html += '<br>';
+                            html += getAnimationCells(JSON.stringify(currentMapTip.events[orgEvtName].animationCells)); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
+                            html += '<br>';
+                            //揺れフラグ
+                            html += getShakeTypeLists(currentMapTip.events[orgEvtName].shakeType);
+                            //サウンド
+                            html += '<br>';
+                            html += getSoundLists(currentMapTip.events[orgEvtName].sound);
+                            html += '</div>';
+                            //アニメーションモードに切り替える
+                            currentEffectType = 'animation';
+                            editAnimationModeFlg = true;
+                            var mapDataContainer = document.getElementById("mapDataContainer");
+                            mapDataContainer.style.pointerEvents = 'none';
+                            mapDataContainer.style.backgroundColor = 'gray';
+                            //イベントの操作ボタンだけはクリックできるようにしておく
+                            var mapEvent = document.getElementById("mapEvent");
+                            mapEvent.style.pointerEvents = 'auto';
+                            //現在のcanvasを保存する
+                            evacuateCanvas = currentMapContext.getImageData(0,0,currentMapCanvas.width,currentMapCanvas.height);
+                            //アニメーションセルの実データコピー
+                            tmpAnimationCells = currentMapTip.events[orgEvtName].animationCells;
+                            //既存アニメーションセルをマップに描画
+                            for (var i=0; i<Object.keys(currentMapTip.events[orgEvtName].animationCells).length; i++) {
+                                // パスをリセット
+                                currentMapContext.beginPath () ;
+                                // レクタングルの座標(50,50)とサイズ(75,50)を指定
+                                currentMapContext.rect(currentMapTip.events[orgEvtName].animationCells[i]["x"]*mapLength ,currentMapTip.events[orgEvtName].animationCells[i]["y"]*mapLength , 32, 32);
+                                // 線の色
+                                currentMapContext.strokeStyle = "orange";
+                                // 線の太さ
+                                currentMapContext.lineWidth =  3;
+                                // 線を描画を実行
+                                currentMapContext.stroke() ;
+                            }
+                            //デフォルトは追加モード
+                            editAnimationType = 0;
                         break;
                     }
                 }
@@ -2153,6 +2303,59 @@ function setEvent(eventName, objFlg = false) {
                             currentEffectType = 'reaction';
                         break;
                         case 'animation':
+                            //アニメタイプと、画像と、表示セル（複数可）と、揺れフラグと、サウンド
+                            html += '<div id="selectEffectContainer">';
+                            html += '<p>※アニメーション</p>';
+                            html += '<button onclick="quitAddAnimationChip()">やめる</button>';
+                            html += '<button id="addAnimationChipMode" onclick="changeEditAnimationType(\'add\')" style="background-color: red">追加モード</button>';
+                            html += '<button id="delAnimationChipMode" onclick="changeEditAnimationType(\'del\')">削除モード</button>';
+                            //アニメーションタイプ
+                            html += '<br>';
+                            html += '<br>';
+                            html += getAnimationTypeLists(currentMapTip.object.events[orgEvtName].animeType);
+                            //画像
+                            html += '<br>';
+                            html += getFlashAnimationLists(currentMapTip.object.events[orgEvtName].flashAnimeType); //flashはテキストのみ（手動運用）
+                            html += '<br>';
+                            html += getObjectAnimationLists(currentMapTip.object.events[orgEvtName].objectAnimeType); //objectは、マップチップターンを利用する
+                            //セル
+                            html += '<br>';
+                            html += getAnimationCells(JSON.stringify(currentMapTip.object.events[orgEvtName].animationCells)); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
+                            html += '<br>';
+                            //揺れフラグ
+                            html += getShakeTypeLists(currentMapTip.object.events[orgEvtName].shakeType);
+                            //サウンド
+                            html += '<br>';
+                            html += getSoundLists(currentMapTip.object.events[orgEvtName].sound);
+                            html += '</div>';
+                            //アニメーションモードに切り替える
+                            currentEffectType = 'animation';
+                            editAnimationModeFlg = true;
+                            var mapDataContainer = document.getElementById("mapDataContainer");
+                            mapDataContainer.style.pointerEvents = 'none';
+                            mapDataContainer.style.backgroundColor = 'gray';
+                            //イベントの操作ボタンだけはクリックできるようにしておく
+                            var mapEvent = document.getElementById("mapEvent");
+                            mapEvent.style.pointerEvents = 'auto';
+                            //現在のcanvasを保存する
+                            evacuateCanvas = currentMapContext.getImageData(0,0,currentMapCanvas.width,currentMapCanvas.height);
+                            //アニメーションセルの実データコピー
+                            tmpAnimationCells = currentMapTip.object.events[orgEvtName].animationCells;
+                            //既存アニメーションセルをマップに描画
+                            for (var i=0; i<Object.keys(currentMapTip.object.events[orgEvtName].animationCells).length; i++) {
+                                // パスをリセット
+                                currentMapContext.beginPath () ;
+                                // レクタングルの座標(50,50)とサイズ(75,50)を指定
+                                currentMapContext.rect(currentMapTip.object.events[orgEvtName].animationCells[i]["x"]*mapLength ,currentMapTip.object.events[orgEvtName].animationCells[i]["y"]*mapLength , 32, 32);
+                                // 線の色
+                                currentMapContext.strokeStyle = "orange";
+                                // 線の太さ
+                                currentMapContext.lineWidth =  3;
+                                // 線を描画を実行
+                                currentMapContext.stroke() ;
+                            }
+                            //デフォルトは追加モード
+                            editAnimationType = 0;
                         break;
                     }
                 }
@@ -2768,6 +2971,14 @@ function setRegisteredBattleOrders(battleOrders) {
     }
 }
 
+function resetAnimationType(evt) {
+    evt.target.nextElementSibling.nextElementSibling.innerText = '';
+}
+
+function resetFlashAnimation(evt) {
+    evt.target.nextElementSibling.nextElementSibling.innerText = '';
+}
+
 //選択中ワイプ画像をリセット
 function resetWipe(evt) {
     evt.target.nextElementSibling.nextElementSibling.src = '';
@@ -2790,10 +3001,32 @@ function resetReaction(evt) {
 }
 
 var currentEffectType = '';
+var editAnimationModeFlg = false;
+var editAnimationType = 0; //0追加、1削除
+var tmpAnimationCells = new Object();
+var evacuateCanvas;
 function setEffectEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=false) {
     if(!exsistEvtFlg) {
         var res = confirm('入力中の内容は消えてしまいます。よろしいですか？');
         if(!res) return;
+    }
+
+    if (editAnimationModeFlg) {//アニメーション編集中だったら戻す
+        //戻すよ
+        editAnimationModeFlg = false;
+        tmpAnimationCells = new Object();
+        var mapDataContainer = document.getElementById("mapDataContainer");
+        mapDataContainer.style.pointerEvents = '';
+        mapDataContainer.style.backgroundColor = '';
+        // editEvent.innerHTML = ''; //これはここでは消しちゃだめ（後でコピペするかもだから残しておく）
+        // editEvent.style.display = 'none'; //これはここでは消しちゃだめ（後でコピペするかもだから残しておく）
+
+        //画面リセット
+        //マップを描画
+        currentMapContext.drawImage(currentMapImage, 0, 0);
+
+        //マップの設定情報を描画
+        reloadEditMap();
     }
 
     //typeのhtmlを作成
@@ -2825,14 +3058,139 @@ function setEffectEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg
 
         //アニメーション
         case 'animation':
+            //アニメタイプと、画像と、表示セル（複数可）と、揺れフラグと、サウンド
+            html += '<div id="selectEffectContainer">';
+            html += '<p>※アニメーション</p>';
+            html += '<button onclick="quitAddAnimationChip()">やめる</button>';
+            html += '<button id="addAnimationChipMode" onclick="changeEditAnimationType(\'add\')" style="background-color: red">追加モード</button>';
+            html += '<button id="delAnimationChipMode" onclick="changeEditAnimationType(\'del\')">削除モード</button>';
+            //アニメーションタイプ
+            html += '<br>';
+            html += '<br>';
+            html += getAnimationTypeLists();
+            //画像
+            html += '<br>';
+            html += getFlashAnimationLists(); //flashはテキストのみ（手動運用）
+            html += '<br>';
+            html += getObjectAnimationLists(); //objectは、マップチップターンを利用する
+            //セル
+            html += '<br>';
+            html += getAnimationCells(); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
+            html += '<br>';
+            //揺れフラグ
+            html += getShakeTypeLists();
+            //サウンド
+            html += '<br>';
+            html += getSoundLists();
+            html += '</div>';
+            effectEventContainer.innerHTML = html;
+            effectEventContainer.style.display = 'inline-block';
 
+            //アニメーションモードに切り替える
+            editAnimationModeFlg = true;
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = 'none';
+            mapDataContainer.style.backgroundColor = 'gray';
+            //イベントの操作ボタンだけはクリックできるようにしておく
+            var mapEvent = document.getElementById("mapEvent");
+            mapEvent.style.pointerEvents = 'auto';
+            //現在のcanvasを保存する
+            evacuateCanvas = currentMapContext.getImageData(0,0,currentMapCanvas.width,currentMapCanvas.height);
+            //デフォルトは追加モード
+            editAnimationType = 0;
         break;
     }
 
     currentEffectType = type;
 }
 
+function quitAddAnimationChip() {
+
+    //確認
+    var ret = confirm('入力中の情報はリセットされます。よろしいですか？');
+    if (!ret) return;
+
+    //戻すよ
+    editAnimationModeFlg = false;
+    tmpAnimationCells = new Object();
+    var mapDataContainer = document.getElementById("mapDataContainer");
+    mapDataContainer.style.pointerEvents = '';
+    mapDataContainer.style.backgroundColor = '';
+    editEvent.innerHTML = '';
+    editEvent.style.display = 'none';
+
+    //画面リセット
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+}
+
+function changeEditAnimationType(type) {
+    if (type == 'add') {
+        editAnimationType = 0;
+        document.getElementById("addAnimationChipMode").style.backgroundColor = 'red';
+        document.getElementById("delAnimationChipMode").style.backgroundColor = '';
+    } else {
+        editAnimationType = 1;
+        document.getElementById("addAnimationChipMode").style.backgroundColor = '';
+        document.getElementById("delAnimationChipMode").style.backgroundColor = 'red';
+    }
+}
+
 //////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）start
+//揺れタイプの一覧を返却
+function getAnimationTypeLists(selectedAnimationType = '') {
+    var html = "";
+    html += '<button onclick="resetAnimationType(event)">アニメーションタイプ削除</button>';
+    html += '<p>選択中のアニメーションタイプ</p>';
+    html += '<p id="selectedAnimationType" class="selectedAnimationType" style="color: blue">' + selectedAnimationType + '</p>';
+    html += '<div id="animationTypeLists">';
+    html += '<ol>';
+    html += '<li onclick="setAnimationTypeInfo(event, \'flash\')">flash</li>';
+    html += '<li onclick="setAnimationTypeInfo(event, \'object\')">object</li>';
+    html += '</ol>';
+    html += '</div>';
+    return html;
+}
+
+function getFlashAnimationLists(selectedFlashAnimation = '') {
+    var html = "";
+    html += '<button onclick="resetFlashAnimation(event)">フラッシュ画像削除</button>';
+    html += '<p>選択中のフラッシュアニメーション画像</p>';
+    html += '<p id="selectedFlashAnimation" class="selectedFlashAnimation" style="color: blue">' + selectedFlashAnimation + '</p>';
+    html += '<div id="flashAnimationLists">';
+    html += '<ol>';
+    html += '<li onclick="setFlashAnimationInfo(event, \'ダメージ\')">ダメージ</li>';
+    html += '<li onclick="setFlashAnimationInfo(event, \'キラキラ\')">キラキラ</li>';
+    html += '</ol>';
+    html += '</div>';
+    return html;    
+}
+
+function getObjectAnimationLists(selectedObjectAnimation = '') {
+    var html = "";
+    html += '<div id="currentMapChipContainer">';
+    html +=     '<p class="mapCategory">選択中のオブジェクトアニメーション画像</p>';
+    html +=     '<div id="currentMapChipBG" style="background-color: white;">';
+    html +=         '<p>タイプ：<span id="currentMapChipType"></span></p>';
+    html +=         '<p>チップ名：<span id="currentMapChipName">' + selectedObjectAnimation + '</span></p>';
+    html +=         '<p>チップ画像：<img src="" id="currentMapChip"></p>';
+    html +=     '</div>';
+    html += '</div>';
+    html += document.getElementById("turnChips").outerHTML;
+    return html;
+}
+
+//テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
+function getAnimationCells(selectedAnimationCells = null) {
+    var html = "";
+    html += '<p class="currentAnimationChips">選択中の全アニメーションセル</p>';
+    html += '<span id="currentAnimationChips">' + selectedAnimationCells + '</span>';
+    return html;
+}
+
 function getWipeLists(wipeSrc = '') {
     var html = "";
     if (wipeSrc != '') wipeSrc = decodeURI(document.getElementById(wipeSrc).src);
@@ -2973,6 +3331,19 @@ function selectObjectImage(evt) {
 }
 
 //////////////////////////////////エレメントの配置位置で表示エレメントを特定する（複数コンテナに対応するため）kugiri
+
+//フラッシュアニメーション情報をセット
+function setFlashAnimationInfo(evt, type) {
+    var selectedFlashAnimationType = evt.target.parentNode.parentNode.previousElementSibling;
+    selectedFlashAnimationType.innerText = type;
+}
+
+//アニメーションタイプ情報をセット
+function setAnimationTypeInfo(evt, type) {
+    var selectedAnimationType = evt.target.parentNode.parentNode.previousElementSibling;
+    selectedAnimationType.innerText = type;
+}
+
 //選択したワイプを、選択中ワイプに表示する
 function selectWipeImage(evt) {
     var selectedWipeImage = evt.target.parentNode.parentNode.previousElementSibling;
@@ -4575,6 +4946,15 @@ function registEventToObj(evtName, objFlg = false) {
                         break;
 
                         case 'animation':
+                            currentMapTip.events[evtNameKey] = new Object();
+                            currentMapTip.events[evtNameKey].type = 'animation'; //animation
+                            currentMapTip.events[evtNameKey].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.events[evtNameKey].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.events[evtNameKey].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.events[evtNameKey].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.events[evtNameKey].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.events[evtNameKey].sound = document.getElementById("selectedSound").innerText;//音
+
                         break;
                     }
                 } else {
@@ -4596,6 +4976,14 @@ function registEventToObj(evtName, objFlg = false) {
                         break;
 
                         case 'animation':
+                            currentMapTip.object.events[evtNameKey] = new Object();
+                            currentMapTip.object.events[evtNameKey].type = 'animation'; //animation
+                            currentMapTip.object.events[evtNameKey].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.object.events[evtNameKey].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.object.events[evtNameKey].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.object.events[evtNameKey].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.object.events[evtNameKey].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.object.events[evtNameKey].sound = document.getElementById("selectedSound").innerText;//音
                         break;
                     }
                 }
@@ -4606,7 +4994,6 @@ function registEventToObj(evtName, objFlg = false) {
                     //shake、reaction、animationの3つがある
                     switch (currentEffectType) {
                         case 'shake':
-                            //currentMapTip.events[currentRegisteredEvent] = new Object(); 
                             currentMapTip.events[currentRegisteredEvent].type = 'shake'; //shake
                             currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
                             currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
@@ -4615,10 +5002,17 @@ function registEventToObj(evtName, objFlg = false) {
                         case 'reaction':
                             currentMapTip.events[currentRegisteredEvent].type = 'reaction'; //reaction
                             currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                            currentMapTip.events[currentRegisteredEvent].reactType = document.getElementById('selectedReaction').innerText;
                         break;
 
                         case 'animation':
+                            currentMapTip.events[currentRegisteredEvent].type = 'animation'; //animation
+                            currentMapTip.events[currentRegisteredEvent].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.events[currentRegisteredEvent].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.events[currentRegisteredEvent].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.events[currentRegisteredEvent].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById("selectedSound").innerText;//音
                         break;
                     }
                 } else {
@@ -4635,14 +5029,31 @@ function registEventToObj(evtName, objFlg = false) {
                         case 'reaction':
                             currentMapTip.object.events[currentRegisteredEvent].type = 'reaction'; //reaction
                             currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                            currentMapTip.object.events[currentRegisteredEvent].reactType = document.getElementById('selectedReaction').innerText;
                         break;
 
                         case 'animation':
+                            currentMapTip.object.events[currentRegisteredEvent].type = 'animation'; //animation
+                            currentMapTip.object.events[currentRegisteredEvent].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.object.events[currentRegisteredEvent].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.object.events[currentRegisteredEvent].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.object.events[currentRegisteredEvent].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.object.events[currentRegisteredEvent].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById("selectedSound").innerText;//音
                         break;
                     }
                 }
             }
+
+            //戻すよ
+            editAnimationModeFlg = false;
+            tmpAnimationCells = new Object();
+            var mapDataContainer = document.getElementById("mapDataContainer");
+            mapDataContainer.style.pointerEvents = '';
+            mapDataContainer.style.backgroundColor = '';
+            editEvent.innerHTML = '';
+            editEvent.style.display = 'none';
+
         break;
         case 'move':
             if (currentRegisteredEvent == '') {
