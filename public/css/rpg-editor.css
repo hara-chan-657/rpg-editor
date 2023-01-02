@@ -324,11 +324,11 @@ margin: 0px 3px;
     overflow: scroll;
 }
 
-#targetMoveChipContainerParent {
+#targetMoveChipContainerParent, #layDownChipContainerParent {
     /* 高さ認識用 */
     overflow:hidden;
 }
-.targetMoveChipContainer {
+.targetMoveChipContainer, .layDownChipContainer {
     border: 1px solid green;
     float: left;
 }
