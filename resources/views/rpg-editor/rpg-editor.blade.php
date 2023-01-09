@@ -24,6 +24,7 @@
     <div id="mapContainer">
         <button onclick="switchCanvasSize()">キャンバス大きさ変更</button>
         <button onclick="setTurnChipMode()" id="setTurnChipMode">マップ交互編集モード</button>
+        <button onclick="setDiagonalWalkMode()" id="setDiagonalWalkMode">斜め歩行編集モード</button>
         <button onclick="editBgm()" id="editBGM">BGM編集</button>
         <p>BGM：<span id="mapBGM"></span></p>
         <p>カーソル位置（<span id="cursorPos"></span>）</p>
@@ -103,6 +104,19 @@
                     @endforeach        
                 </div>
             </div>
+        </div>
+        <div id="diagonalWalkEditConntainer" style="display:none;">
+            <button onclick="setDiagonalWalkPutMode('put')" id="setDiagonalWalkModePut" style="background-color: red;">put</button>
+            <button onclick="setDiagonalWalkPutMode('del')" id="setDiagonalWalkModeDel">del</button>
+            <br>
+            <br>
+            <p>方向：<span id="currentDiagonalWalkDirection">↖︎</span></p>
+            <br>
+            <button onclick="setDiagonalWalkDirection('lu')" id="">↖︎</button>
+            <button onclick="setDiagonalWalkDirection('ru')" id="">↗︎</button>
+            <br>
+            <button onclick="setDiagonalWalkDirection('ld')" id="">↙︎</button>
+            <button onclick="setDiagonalWalkDirection('rd')" id="">↘︎</button>
         </div>
     </div>    
     <div id="saveProjectContainer">
@@ -583,6 +597,15 @@
             @endforeach
         </div>
     </div>
+
+    <!-- 斜め歩き用png -->
+    <div id=""  style="display:;">
+        <img src="{{ asset('image/lu.png') }}" id="diagonal-lu">
+        <img src="{{ asset('image/ru.png') }}" id="diagonal-ru">
+        <img src="{{ asset('image/rd.png') }}" id="diagonal-rd">
+        <img src="{{ asset('image/ld.png') }}" id="diagonal-ld">
+    </div>
+
     </div>
 
 <script src="{{ asset('/js/rpg-editor.js') }}"></script>

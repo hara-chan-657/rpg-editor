@@ -40,7 +40,7 @@ ol {
 	background-color: white;
 }
 
-#turnChipEditContainer {
+#turnChipEditContainer, #diagonalWalkEditConntainer {
     border: 1px solid red;
 }
 

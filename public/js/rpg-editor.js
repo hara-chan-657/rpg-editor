@@ -170,7 +170,7 @@ function setEditMap(evt) {
     //スタートプロジェクトかチェック
     checkIsStartProject();
     //登録済みのイベントとオブジェクトを描画
-    drawEvtAndObjAndTurnChip();
+    drawEvtAndEditInfo();
     //グリッド表示
     drawGrid();
 }
@@ -184,7 +184,7 @@ function reloadEditMap() {
     //スタートプロジェクトかチェック
     checkIsStartProject();
     //イベントとオブジェクト描画
-    drawEvtAndObjAndTurnChip();
+    drawEvtAndEditInfo();
     //グリッド表示
     drawGrid();
     //選択チップ枠表示
@@ -343,6 +343,65 @@ function setTurnChipPutMode(mode) {
     }
 
 }
+
+//斜め歩きの編集モードにする
+var diagonalWalkModeFlg = false;
+function setDiagonalWalkMode() {
+
+    if (diagonalWalkModeFlg) {
+        diagonalWalkModeFlg = false;
+        document.getElementById("setDiagonalWalkMode").style.backgroundColor = "";
+        document.getElementById("mapEventEditConntainer").style.display = 'inline-block';
+        document.getElementById("diagonalWalkEditConntainer").style.display = 'none';
+
+    } else {
+        diagonalWalkModeFlg = true;
+        document.getElementById("setDiagonalWalkMode").style.backgroundColor = "red";
+        document.getElementById("mapEventEditConntainer").style.display = 'none';
+        document.getElementById("diagonalWalkEditConntainer").style.display = 'inline-block';
+    }
+
+}
+
+//斜め歩きの編集編集モードを切り替える（↑と似てるので注意）
+var diagonalWalkPutMode = true;//（↑と似てるので注意）
+function setDiagonalWalkPutMode(mode) {
+
+    if (mode == "put" && diagonalWalkPutMode == false) {
+        diagonalWalkPutMode = true;
+        document.getElementById("setDiagonalWalkModePut").style.backgroundColor = "red";
+        document.getElementById("setDiagonalWalkModeDel").style.backgroundColor = "";
+
+    } else if (mode == "del" && diagonalWalkPutMode == true) {
+        diagonalWalkPutMode = false;
+        document.getElementById("setDiagonalWalkModePut").style.backgroundColor = "";
+        document.getElementById("setDiagonalWalkModeDel").style.backgroundColor = "red";
+    }
+
+}
+
+var currentDiagonalWalkDirection = 'lu';
+function setDiagonalWalkDirection(direction) {
+    currentDiagonalWalkDirection = direction;
+    var dir = '';
+    switch(direction){
+        case 'lu':
+            dir = '↖︎';
+        break;
+        case 'ru':
+            dir = '↗︎';
+        break;
+        case 'ld':
+            dir = '↙︎';
+        break;
+        case 'rd':
+            dir = '↘︎';
+        break;
+    }
+    document.getElementById("currentDiagonalWalkDirection").innerText = dir;
+}
+
+
 
 //現在マップチップセット
 var crtChip = []; //現在マップの情報格納配列
@@ -541,8 +600,26 @@ function changeTargetMoveChip() {
             } else if (charas[i] == "2" || charas[i] == "3") { //右か左
                 charas[i] == "2" ? sposX++ : sposX--;
 
-            } else {
+            } else if (charas[i] == "5" || charas[i] == "7") { //左上か、右下
+                if (charas[i] == "5") { //左上
+                    sposX--;
+                    sposY--;
+                } else if (charas[i] == "7") { //右下
+                    sposX++;
+                    sposY++;
+                } else {}
 
+            } else if (charas[i] == "6" || charas[i] == "8") { //右上か左下
+                if (charas[i] == "6") { //右上
+                    sposX++;
+                    sposY--;
+                } else if (charas[i] == "8") { //左下
+                    sposX--;
+                    sposY++;
+                } else {}
+
+            } else {//止
+                //charas[i] == "4"
             }
 
             ////クリックしたマップチップを枠で囲う
@@ -802,6 +879,24 @@ function addOrder(order) {
             } else if (charas[i] == "2" || charas[i] == "3") { //右か左
                 charas[i] == "2" ? tmpFromX++ : tmpFromX--;
 
+            } else if (charas[i] == "5" || charas[i] == "7") { //左上か、右下
+                if (charas[i] == "5") { //左上
+                    tmpFromX--;
+                    tmpFromY--;
+                } else if (charas[i] == "7") { //右下
+                    tmpFromX++;
+                    tmpFromY++;
+                } else {}
+
+            } else if (charas[i] == "6" || charas[i] == "8") { //右上か左下
+                if (charas[i] == "6") { //右上
+                    tmpFromX++;
+                    tmpFromY--;
+                } else if (charas[i] == "8") { //左下
+                    tmpFromX--;
+                    tmpFromY++;
+                } else {}
+
             } else {//止
                 //charas[i] == "4"
             }
@@ -909,9 +1004,28 @@ function delOrder() {
             } else if (charas[i] == "2" || charas[i] == "3") { //右か左
                 charas[i] == "2" ? tmpFromX++ : tmpFromX--;
 
-            } else {
+            } else if (charas[i] == "5" || charas[i] == "7") { //左上か、右下
+                if (charas[i] == "5") { //左上
+                    tmpFromX--;
+                    tmpFromY--;
+                } else if (charas[i] == "7") { //右下
+                    tmpFromX++;
+                    tmpFromY++;
+                } else {}
 
+            } else if (charas[i] == "6" || charas[i] == "8") { //右上か左下
+                if (charas[i] == "6") { //右上
+                    tmpFromX++;
+                    tmpFromY--;
+                } else if (charas[i] == "8") { //左下
+                    tmpFromX--;
+                    tmpFromY++;
+                } else {}
+
+            } else {//止
+                //charas[i] == "4"
             }
+
 
             ////クリックしたマップチップを枠で囲う
             // パスをリセット
@@ -1141,6 +1255,47 @@ function setTurnChipToData(evt) {
 
 }
 
+function setDiagonalWalkInfoToData(evt) {
+
+    //クリックした座標を取得する
+    var mousePos = getMousePosition(currentMapCanvas, evt);
+    //クリックしたマップチップを特定
+    var colNum = Math.floor(mousePos.x/mapLength);
+    var rowNum = Math.floor(mousePos.y/mapLength);
+    var curChip = currrentMapObj[rowNum][colNum];
+    //jsonを編集
+    if (diagonalWalkPutMode) {
+        //プロパティ「diagonalWalk」を設定する
+        if (currentDiagonalWalkDirection == 'lu' || currentDiagonalWalkDirection == 'ld') {
+            if (curChip.hasOwnProperty('diagonalWalkLeft') && (curChip.diagonalWalkLeft == 'lu' || curChip.diagonalWalkLeft == 'ld')) {
+                delete curChip.diagonalWalkLeft;
+            }
+            currrentMapObj[rowNum][colNum].diagonalWalkLeft = currentDiagonalWalkDirection;
+        }
+        if (currentDiagonalWalkDirection == 'ru' || currentDiagonalWalkDirection == 'rd') {
+            if (curChip.hasOwnProperty('diagonalWalkRight') && (curChip.diagonalWalkRight == 'ru' || curChip.diagonalWalkRight == 'rd')) {
+                delete curChip.diagonalWalkRight;
+            }
+            currrentMapObj[rowNum][colNum].diagonalWalkRight = currentDiagonalWalkDirection;
+        }
+
+    } else {
+        if (curChip.hasOwnProperty('diagonalWalkLeft')) {
+            delete curChip.diagonalWalkLeft;
+        }
+        if (curChip.hasOwnProperty('diagonalWalkRight')) {
+            delete curChip.diagonalWalkRight;
+        }
+    }
+
+    //マップを描画
+    currentMapContext.drawImage(currentMapImage, 0, 0);
+
+    //マップの設定情報を描画
+    reloadEditMap();
+
+}
+
 //アニメーション対象セルをデータにセットする
 function setAnimationCellToData(evt) {
 
@@ -1319,6 +1474,11 @@ function showMapTipData(evt) {
 
     if (turnChipModeFlg) {
         setTurnChipToData(evt);
+        return;
+    }
+
+    if (diagonalWalkModeFlg) {
+        setDiagonalWalkInfoToData(evt);
         return;
     }
 
@@ -2604,6 +2764,10 @@ function setEvent(eventName, objFlg = false) {
             html += '        <button onclick="addOrder(\'2\')">→</button>';
             html += '        <button onclick="addOrder(\'1\')">↑</button>';
             html += '        <button onclick="addOrder(\'0\')">↓</button>';
+            html += '        <button onclick="addOrder(\'5\')">↖︎</button>';
+            html += '        <button onclick="addOrder(\'6\')">↗︎</button>';
+            html += '        <button onclick="addOrder(\'7\')">↘︎</button>';
+            html += '        <button onclick="addOrder(\'8\')">↙︎</button>';
             html += '        <button onclick="addOrder(\'4\')">止</button>';
             html += '        <button onclick="delOrder()">削除</button>';
             html += '      </p>';
@@ -2666,6 +2830,10 @@ function setEvent(eventName, objFlg = false) {
                 html += '      <button onclick="addOrder(\'2\')">→</button>';
                 html += '      <button onclick="addOrder(\'1\')">↑</button>';
                 html += '      <button onclick="addOrder(\'0\')">↓</button>';
+                html += '      <button onclick="addOrder(\'5\')">↖︎</button>';
+                html += '      <button onclick="addOrder(\'6\')">↗︎</button>';
+                html += '      <button onclick="addOrder(\'7\')">↘︎</button>';
+                html += '      <button onclick="addOrder(\'8\')">↙︎</button>';
                 html += '      <button onclick="addOrder(\'4\')">止</button>';
                 html += '      <button onclick="delOrder()">削除</button>';
                 html += '    </p>';
@@ -3925,8 +4093,8 @@ function setTransitionMap(mapName, orgEvtName) {
     transitionMapContext.drawImage(transitionMapImage, 0, 0);
 }
 
-//イベント持ち、オブジェクト持ちのマップチップ上に、それらを表示する
-function drawEvtAndObjAndTurnChip() {
+//イベント持ち、編集情報持ちのマップ上に、それらを表示する
+function drawEvtAndEditInfo() {
     for (var i=0; i<Object.keys(currrentMapObj).length; i++) {
         for (var j=0; j<Object.keys(currrentMapObj[i]).length; j++) {
             //一番最初に、マップ分類に近いマップ交互のデータを描画
@@ -3967,6 +4135,9 @@ function drawEvtAndObjAndTurnChip() {
             }
             if (currrentMapObj[i][j].hasOwnProperty('events')) {
                 drawTags('events',j,i);
+            }
+            if (currrentMapObj[i][j].hasOwnProperty('diagonalWalkLeft') || currrentMapObj[i][j].hasOwnProperty('diagonalWalkRight')) {
+                drawTags('diagonalWalk',j,i);
             }
         }
     }
@@ -4031,6 +4202,20 @@ function drawTags(type, j, i) {
             currentMapContext.lineWidth =  1;
             // 線を描画を実行
             currentMapContext.stroke() ;
+        break;
+
+
+        case 'diagonalWalk':
+            //leftかrightを取得して描画
+            if(currrentMapObj[i][j].hasOwnProperty('diagonalWalkLeft')) {
+                var png = document.getElementById('diagonal-'+currrentMapObj[i][j].diagonalWalkLeft);
+                currentMapContext.drawImage(png, j*mapLength ,i*mapLength);
+            }
+
+            if(currrentMapObj[i][j].hasOwnProperty('diagonalWalkRight')) {
+                var png = document.getElementById('diagonal-'+currrentMapObj[i][j].diagonalWalkRight);
+                currentMapContext.drawImage(png, j*mapLength ,i*mapLength);
+            }
         break;
     }
 }
