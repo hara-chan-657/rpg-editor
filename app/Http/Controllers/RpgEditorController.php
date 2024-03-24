@@ -18,10 +18,16 @@ class RpgEditorController extends Controller
 
     //プロジェクトデータを取得しにいく
     public function getProjectData(Request $request) {
+        $viewParamArray = $this->getProjectDataDetail($request->oldProjectName);
+        return view('rpg-editor.rpg-editor', $viewParamArray);
+    }
+
+    //プロジェクトデータを取得しにいく
+    public function getProjectDataDetail($prjName) {
         //引数のプロジェクト名を元に、プロジェクトのマップと、マップデータを探しにいく
         //ディレクトリの中のマップ画像パスを取得する
         $i = 0; //マップ画像インデックス
-        foreach(glob('./projects/' . $request->oldProjectName . '/*.png') AS $pngFile){
+        foreach(glob('./projects/' . $prjName . '/*.png') AS $pngFile){
             if(is_file($pngFile)){
                 $pngFiles[$i]['path'] = $pngFile;
                 $pngFiles[$i]['baseName'] = basename($pngFile, '.png');
@@ -31,16 +37,16 @@ class RpgEditorController extends Controller
         
         //キャラ取得
         $charaCtlr = new CharacterController();
-        $characters = $charaCtlr->getCharacters($request->oldProjectName);
+        $characters = $charaCtlr->getCharacters($prjName);
 
         //スキル取得
         $skillCtlr = new SkillController();
-        $skills = $skillCtlr->getSkills($request->oldProjectName);
-        $specialSkills = $skillCtlr->getSpecialSkills($request->oldProjectName);
+        $skills = $skillCtlr->getSkills($prjName);
+        $specialSkills = $skillCtlr->getSpecialSkills($prjName);
 
         //ツール取得
         $toolCtlr = new ToolController();
-        $tools = $toolCtlr->getTools($request->oldProjectName);
+        $tools = $toolCtlr->getTools($prjName);
 
         //オブジェクト取得
         $excludes = array(
@@ -53,7 +59,7 @@ class RpgEditorController extends Controller
         //var_dump(scandir('../../rpg-player/public/projects'));
         foreach(scandir('../../rpg-player/public/projects') AS $prjDir){
             if (in_array($prjDir, $excludes)) continue;
-            if($prjDir == $request->oldProjectName) {
+            if($prjDir == $prjName) {
                 foreach(scandir('../../rpg-player/public/projects/' . $prjDir) AS $imageTypeDir){
                     if (in_array($imageTypeDir, $excludes)) continue;
                     if ($imageTypeDir == 'objects') {
@@ -140,7 +146,7 @@ class RpgEditorController extends Controller
         //var_dump(scandir('../../rpg-player/public/projects'));
         foreach(scandir('../../rpg-player/public/projects') AS $prjDir){
             if (in_array($prjDir, $excludes)) continue;
-            if($prjDir == $request->oldProjectName) {
+            if($prjDir == $prjName) {
                 foreach(scandir('../../rpg-player/public/projects/' . $prjDir) AS $imageTypeDir){
                     if (in_array($imageTypeDir, $excludes)) continue;
                     if ($imageTypeDir == 'characters') {
@@ -277,21 +283,19 @@ class RpgEditorController extends Controller
             }
         }
         //var_dump($objects);       
-        return view('rpg-editor.rpg-editor',
-                    [
-                        'pngFiles'=>$pngFiles,
-                        'project'=>$request->oldProjectName,
-                        'characters'=>$characters,
-                        'skills'=>$skills,
-                        'specialSkills'=>$specialSkills,
-                        'objects'=>$objects,
-                        'wipes'=>$wipes,
-                        'tools'=>$tools,
-                        'turnChips'=>$turnChips,
-                        'turnPassChips'=>$turnPassChips,
-                        'sounds'=>$sounds,
-                        'cutScenes'=>$cutScenes
-                    ]
+        return array(
+                    'pngFiles'=>$pngFiles,
+                    'project'=>$prjName,
+                    'characters'=>$characters,
+                    'skills'=>$skills,
+                    'specialSkills'=>$specialSkills,
+                    'objects'=>$objects,
+                    'wipes'=>$wipes,
+                    'tools'=>$tools,
+                    'turnChips'=>$turnChips,
+                    'turnPassChips'=>$turnPassChips,
+                    'sounds'=>$sounds,
+                     'cutScenes'=>$cutScenes
                 );
     }
 
