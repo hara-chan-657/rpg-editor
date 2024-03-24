@@ -4136,7 +4136,7 @@ function drawEvtAndEditInfo() {
             if (currrentMapObj[i][j].hasOwnProperty('events')) {
                 drawTags('events',j,i);
             }
-            if (!currrentMapObj[i][j].hasOwnProperty('events') && currrentMapObj[i][j].hasOwnProperty('trigger')) {
+            if (!currrentMapObj[i][j].hasOwnProperty('events') && currrentMapObj[i][j].hasOwnProperty('trigger') && currrentMapObj[i][j].trigger != "トリガー設定なし") {
                 drawTags('trigger',j,i);
             }
             if (currrentMapObj[i][j].hasOwnProperty('diagonalWalkLeft') || currrentMapObj[i][j].hasOwnProperty('diagonalWalkRight')) {
