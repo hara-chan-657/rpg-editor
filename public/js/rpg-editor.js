@@ -3710,6 +3710,7 @@ function getReactionLists(selectedReaction = '') {
     html += '<li onclick="setReactionInfo(event, \'ハート\')">ハート</li>';
     html += '<li onclick="setReactionInfo(event, \'いかり\')">いかり</li>';
     html += '<li onclick="setReactionInfo(event, \'汗\')">汗</li>';
+    html += '<li onclick="setReactionInfo(event, \'ハッピー\')">ハッピー</li>';
     html += '</ol>';
     html += '</div>';
     return html;   
