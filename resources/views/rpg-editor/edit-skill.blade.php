@@ -23,7 +23,7 @@
             <input type="hidden" name="project" id="" value="{{$project}}">
             <input type="submit" value="新規登録">
             <div><span>技名</span><input type="text" name="skillName" id="" cols="30"></div>
-            <div><span>威力</span><input type="text" name="skillPower" id="" style="pointer-events: none;"></div>
+            <div><span>威力</span><input type="text" name="skillPower" id="" style="pointer-events: none;" value="1"></div>
             <div>
             <span>技分類</span>
             <select id="" name="skillType">
