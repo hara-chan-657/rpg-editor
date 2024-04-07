@@ -2353,6 +2353,8 @@ function setEvent(eventName, objFlg = false) {
                     //キャラ6
                     charaId6 = currentMapTip.object.events[orgEvtName].chara6;
                     if(charaId6 != "") chara6 = projectDataObj['characters'][charaId6].chrName;
+                    //バトルオーダー
+                    battleOrders = currentMapTip.object.events[orgEvtName]['battleOrders'];
                 }
             }
             html += '<p>【バトル】</p>';
