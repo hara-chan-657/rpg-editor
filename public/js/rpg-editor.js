@@ -61,6 +61,9 @@ var settingObjects = [
     "character",
 ]
 
+//現在選択中のイベントグループ
+var currentEventGroup = '';
+
 //現在選択中登録済みイベント
 var currentRegisteredEvent = '';
 
@@ -167,6 +170,8 @@ function setEditMap(evt) {
     //現在選択中マップを更新
     currrentMapObj = mapObj[evt.target.alt];
     currrentMapName = evt.target.alt;
+    //旧イベント群を新しいイベントグループ形式に変換
+    updateEventsToGroupVersion();
     //スタートプロジェクトかチェック
     checkIsStartProject();
     //登録済みのイベントとオブジェクトを描画
@@ -218,6 +223,30 @@ function loadJsonToObj() {
     xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
     xhr.send(null);
     projectDataObj = JSON.parse(xhr.responseText);
+}
+
+function updateEventsToGroupVersion() {
+    for (var i=0; i<Object.keys(currrentMapObj).length; i++) {
+        for (var j=0; j<Object.keys(currrentMapObj[i]).length; j++) {
+            //旧式のイベント群があった場合、アップデートする
+            if(currrentMapObj[i][j].hasOwnProperty('events') && !currrentMapObj[i][j]['events'].hasOwnProperty('groupIndex')) {
+                //グループ0を足してその中にイベント群を移動、groupIndexも追加する
+                var tmp =  new Object();
+                tmp[0] = JSON.parse(JSON.stringify(currrentMapObj[i][j]['events']));//一度文字列にしてパースしてから渡すことで参照が切れる
+                tmp['groupIndex'] = 0;
+                currrentMapObj[i][j]['events'] = tmp
+            }
+            if(currrentMapObj[i][j].hasOwnProperty('object')) {
+                if(currrentMapObj[i][j]['object'].hasOwnProperty('events') && !currrentMapObj[i][j]['object']['events'].hasOwnProperty('groupIndex')) {
+                    //グループ0を足してその中にイベント群を移動、groupIndexも追加する
+                    var tmp =  new Object();
+                    tmp[0] = JSON.parse(JSON.stringify(currrentMapObj[i][j]['object']['events']));//一度文字列にしてパースしてから渡すことで参照が切れる
+                    tmp['groupIndex'] = 0;
+                    currrentMapObj[i][j]['object']['events'] = tmp
+                }
+            }
+        }
+    }
 }
 
 //マップ選択時スタートプロジェクトかチェックする
@@ -1140,9 +1169,12 @@ function showSelectedNewMoveObjInfo(evt) {
             //ツール
                 html += '<p>オブジェクトタイプ：ツール</p>';
                 html += '<p>設定済みイベント一覧</p>';
+                html += '<div class="eventGroupsForObj" style="background-color: lavender">';
+                html += '<p onClick="changeGroupIndex(event, 0, true)">グループ0</p>';
                 html += '<ol>';
-                html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
+                html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, 0, true)">拾いイベント（固定）</li>';
                 html += '</ol>';
+                html += '</div>';
                 var objTxt = JSON.stringify(tmpCurrentMapTip.object);
                 html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
             } else {
@@ -1150,13 +1182,25 @@ function showSelectedNewMoveObjInfo(evt) {
                 html += '<p>オブジェクトタイプ：キャラクター</p>';
                 html += '<p>キャラ名：' + tmpCurrentMapTip.object.charaName + '</p>';
                 html += '<p>設定済みイベント一覧</p>';
-                html += '<ol>';
-                var evtIndex = 0;
-                for( key in tmpCurrentMapTip.object.events ) {
-                    html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
-                    evtIndex++;
+                //イベントチェック
+                if (tmpCurrentMapTip['object'].hasOwnProperty('events')) {
+                    var groupIndex = 0;
+                    var evtIndex = 0;
+                    while (tmpCurrentMapTip.object.events.hasOwnProperty(groupIndex)) {
+                        html += '<div class="eventGroupsForObj" style="background-color: lavender">';
+                        html += '<p onClick="changeGroupIndex(event, \'' + groupIndex + '\', true)">グループ' + groupIndex + '</p>';
+                        html += '<ol>';
+                        for( key in tmpCurrentMapTip.object.events[groupIndex] ) {
+                            html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + groupIndex + '\', \'' + evtIndex + '\', true)">' + key + '</li>';
+                            evtIndex++;
+                        }
+                        html += '</ol>';
+                        html += '</div>';
+                        groupIndex++;
+                    }
+                } else {
+                    html += '<p>イベントはありません</p>';
                 }
-                html += '</ol>';
                 var objTxt = JSON.stringify(tmpCurrentMapTip.object);
                 html += '<p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
             }
@@ -1213,6 +1257,13 @@ function addSceneEventContainer() {
     return ;
 }
 
+//シーンイベントの編集コンテナを削除する
+function deleteSceneEventContainer(ele) {
+    if(confirm("シーンイベントを削除しますか？")){
+        ele.parentElement.remove()
+    }
+    return ;
+}
 
 //マップ交互チップをデータにセットする
 function setTurnChipToData(evt) {
@@ -1449,6 +1500,9 @@ function showMapTipData(evt) {
         return;
     }
 
+    //現在選択中のイベントグループをクリア
+    currentEventGroup = '';
+
     //現在選択中のイベントをクリア
     currentRegisteredEvent = '';
 
@@ -1591,10 +1645,12 @@ function changeEventOrder(evt, order, objFlg = false) {
     // 選択中のイベントのインデックス
     var targetIndex;
     //登録ずみイベントのキーを取得
+    //イベントグループのインデックスを取得
+    var evtGrpIndex = currentEventGroup.substr(-1);
     if (objFlg == false) {
-        var evtKeys = Object.keys(currentMapTip.events)
+        var evtKeys = Object.keys(currentMapTip.events[evtGrpIndex])
     } else {
-        var evtKeys = Object.keys(currentMapTip.object.events)
+        var evtKeys = Object.keys(currentMapTip.object.events[evtGrpIndex])
     }
     //選択中のイベントと一致するイベントのインデックスを取得
     for (var i=0; i<evtKeys.length; i++) {
@@ -1622,44 +1678,48 @@ function changeEventOrder(evt, order, objFlg = false) {
                 for (var i=0; i<evtKeys.length; i++) {
                     //選択中のイベント-1のイベントだったら
                     if (i == targetIndex-1) {
-                        tmp = currentMapTip.events[evtKeys[i]]
+                        tmp = currentMapTip.events[evtGrpIndex][evtKeys[i]]
                         continue;
                     }
                     //選択中のイベントだったら
                     if (i == targetIndex) {
                         //まずは普通に代入
-                        eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
+                        eventsObj[evtKeys[i]] = currentMapTip.events[evtGrpIndex][evtKeys[i]];
                         //退避しておいた一個前のオブジェクトを代入
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
                         eventsObj[evtKeys[i-1]] = tmp;
                         continue;
                     }
                     //通常
-                    eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                    eventsObj[evtKeys[i]] = currentMapTip.events[evtGrpIndex][evtKeys[i]];
                 }
             break;
             case 'plus':
                 for (var i=0; i<evtKeys.length; i++) {
                     //選択中のイベントだったら
                     if (i == targetIndex) {
-                        tmp = currentMapTip.events[evtKeys[i]]
+                        tmp = currentMapTip.events[evtGrpIndex][evtKeys[i]]
                         continue;
                     }
                     //選択中のイベント+1のイベントだったら
                     if (i == targetIndex+1) {
                         //まずは普通に代入
-                        eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
+                        eventsObj[evtKeys[i]] = currentMapTip.events[evtGrpIndex][evtKeys[i]];
                         //退避しておいた一個前のオブジェクトを代入
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
                         eventsObj[evtKeys[i-1]] = tmp;
                         continue;
                     }
                     //通常
-                    eventsObj[evtKeys[i]] = currentMapTip.events[evtKeys[i]];
+                    eventsObj[evtKeys[i]] = currentMapTip.events[evtGrpIndex][evtKeys[i]];
                 }
             break;
         }
 
         //eventsを更新
-        currentMapTip.events = eventsObj;
+        currentMapTip.events[evtGrpIndex] = eventsObj;
 
     } else {
         switch (order) {
@@ -1667,44 +1727,48 @@ function changeEventOrder(evt, order, objFlg = false) {
                 for (var i=0; i<evtKeys.length; i++) {
                     //選択中のイベント-1のイベントだったら
                     if (i == targetIndex-1) {
-                        tmp = currentMapTip.object.events[evtKeys[i]]
+                        tmp = currentMapTip.object.events[evtGrpIndex][evtKeys[i]]
                         continue;
                     }
                     //選択中のイベントだったら
                     if (i == targetIndex) {
                         //まずは普通に代入
-                        eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
+                        eventsObj[evtKeys[i]] = currentMapTip.object.events[evtGrpIndex][evtKeys[i]];
                         //退避しておいた一個前のオブジェクトを代入
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
                         eventsObj[evtKeys[i-1]] = tmp;
                         continue;
                     }
                     //通常
-                    eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                    eventsObj[evtKeys[i]] = currentMapTip.object.events[evtGrpIndex][evtKeys[i]];
                 }
             break;
             case 'plus':
                 for (var i=0; i<evtKeys.length; i++) {
                     //選択中のイベントだったら
                     if (i == targetIndex) {
-                        tmp = currentMapTip.object.events[evtKeys[i]]
+                        tmp = currentMapTip.object.events[evtGrpIndex][evtKeys[i]]
                         continue;
                     }
                     //選択中のイベント+1のイベントだったら
                     if (i == targetIndex+1) {
                         //まずは普通に代入
-                        eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
+                        eventsObj[evtKeys[i]] = currentMapTip.object.events[evtGrpIndex][evtKeys[i]];
                         //退避しておいた一個前のオブジェクトを代入
+                        //※eventObjは代入用の仮のオブジェクトなのでグループインデックスはつけない！
                         eventsObj[evtKeys[i-1]] = tmp;
                         continue;
                     }
                     //通常
-                    eventsObj[evtKeys[i]] = currentMapTip.object.events[evtKeys[i]];
+                    eventsObj[evtKeys[i]] = currentMapTip.object.events[evtGrpIndex][evtKeys[i]];
                 }
             break;
         }
 
         //eventsを更新
-        currentMapTip.object.events = eventsObj;
+        currentMapTip.object.events[evtGrpIndex] = eventsObj;
     }
     
     //イベントのHTMLを更新
@@ -1752,7 +1816,11 @@ function updateMapEventHTML() {
     } else {
         mapEvent.innerHTML = '<p>イベントはありません</p>';
     }
-    //イベント追加ボタン
+    //イベントグループ追加ボタン
+    mapEvent.innerHTML += '<p id="addEventGroup" onclick="addEventGroup()">イベントグループを追加</p>';
+    //イベントグループ削除ボタン
+    mapEvent.innerHTML += '<p id="deleteEventGroup" onclick="deleteEventGroup()">イベントグループを削除</p>';
+        //イベント追加ボタン
     mapEvent.innerHTML += '<p id="addEvent" onclick="addEvent()">イベントを追加</p>';
     //イベント削除ボタン
     mapEvent.innerHTML += '<p id="deleteEvent" onclick="deleteEvent()">イベントを削除</p>';
@@ -1772,11 +1840,16 @@ function updateMapEventHTML() {
         mapObject.innerHTML += '<span id="deleteObject" onclick="deleteObject()">オブジェクトを削除する※注意</span>';
         if (objName == 'tool') {
             //拾いイベントだけ
-            mapObject.innerHTML += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
-            //html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>';
+            var tmpHtml = '';
+            tmpHtml += '<div class="eventGroupsForObj" style="background-color: lavender">';
+            tmpHtml += '<p onClick="changeGroupIndex(event, 0, true)">グループ0</p>';
+            tmpHtml += '<ol>';
+            tmpHtml += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, 0, true)">拾いイベント（固定）</li>';
+            tmpHtml += '</ol>';
+            tmpHtml += '</div>';
+            mapObject.innerHTML += tmpHtml
         } else if (objName == 'character') {
             mapObject.innerHTML += '<p>トリガはAボタン</p>';
-            //mapObject.innerHTML += '<p>クリーチャーを選択</p>';
             //イベントチェック
             if (currentMapTip['object'].hasOwnProperty('events')) {
                 //登録ずみイベント一覧を表示
@@ -1786,6 +1859,10 @@ function updateMapEventHTML() {
             }
             mapObject.innerHTML += '<div id="mapObjEvent"></div>';
             var mapObjEvent = document.getElementById("mapObjEvent");
+            //イベントグループ追加ボタン
+            mapObjEvent.innerHTML += '<p id="addEventGroup" onclick="addEventGroup(true)">イベントグループを追加</p>';
+            //イベントグループ削除ボタン
+            mapObjEvent.innerHTML += '<p id="deleteEventGroup" onclick="deleteEventGroup(true)">イベントグループを削除</p>';
             //イベント追加ボタン
             mapObjEvent.innerHTML += '<p id="addEvent" onclick="addEvent(true)">イベントを追加</p>';
             //イベント削除ボタン
@@ -1963,27 +2040,50 @@ function showMapTipEvents(objFlg = false) {
     var html = '<p style="background-color: yellow;">==マップ情報==</p>';
     html += '<p>設定済みイベント一覧</p>';
     html += '<p style="color:red">※Transitionは最後に設定してください</p>';
-    html += '<ol>';
+    var groupIndex = 0;
     var evtIndex = 0;
+    //イベントグループ毎
     if (objFlg == false) {
-        for( key in currentMapTip.events ) {
-            html += '<li class="registerdEvents" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\')">' + key + '</li>';
-            evtIndex++;
+        while (currentMapTip.events.hasOwnProperty(groupIndex)) {
+            var color = currentEventGroup.startsWith('map') && currentEventGroup.endsWith(groupIndex) ? 'plum' : 'lavender';
+            html += '<div class="eventGroups" style="background-color: ' + color + '">';
+            html += '<p onClick="changeGroupIndex(event, \'' + groupIndex + '\')">グループ' + groupIndex + '</p>';
+            html += '<ol>';
+            for( key in currentMapTip.events[groupIndex] ) {
+                html += '<li class="registerdEvents" onclick="selectRegisterdEvent(event, \'' + groupIndex + '\', \'' + evtIndex + '\')">' + key + '</li>';
+                evtIndex++;
+            }
+            html += '</ol>';
+            html += '</div>';
+            mapEvent.innerHTML = html;
+            groupIndex++;
         }
-        html += '</ol>';
-        mapEvent.innerHTML = html;
     } else {
-        for( key in currentMapTip.object.events ) {
-            html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>';
-            evtIndex++;
+        while (currentMapTip.object.events.hasOwnProperty(groupIndex)) {
+            var color = currentEventGroup.startsWith('obj') && currentEventGroup.endsWith(groupIndex) ? 'plum' : 'lavender';
+            html += '<div class="eventGroupsForObj" style="background-color: ' + color + '">';
+            html += '<p onClick="changeGroupIndex(event, \'' + groupIndex + '\', true)">グループ' + groupIndex + '</p>';
+            html += '<ol>';
+            for( key in currentMapTip.object.events[groupIndex] ) {
+                html += '<li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + groupIndex + '\', \'' + evtIndex + '\', true)">' + key + '</li>';
+                evtIndex++;
+            }
+            html += '</ol>';
+            html += '</div>';
+            mapObject.innerHTML = html;
+            groupIndex++;
         }
-        html += '</ol>';
-        mapObject.innerHTML += html; //+=なのに注意。クリーチャーオブジェクトの場合、クリーチャーであることを直前のタグで表示しないと分かりづらいため。
     }
 }
 
 //登録済みイベントクリック時、イベントを選択状態にする。
-function selectRegisterdEvent(e, evtIndex, objFlg = false) {
+function selectRegisterdEvent(e, grpIndex, evtIndex, objFlg = false) {
+    //イベントグループの色を変更
+    changeEventGroupColor(e, false);
+    //イベントグループを選択状態にする
+    var type = objFlg ? 'obj' : 'map';
+    currentEventGroup = type + '_' + grpIndex;
+
     //クリックしたイベントを選択状態にする
     var events = document.getElementsByClassName('registerdEvents');
     var eventsForObj = document.getElementsByClassName('registerdEventsForObj');
@@ -2018,6 +2118,52 @@ function selectRegisterdEvent(e, evtIndex, objFlg = false) {
 
 }
 
+//イベントグループをクリック時、グループを選択状態にする。
+function changeGroupIndex(e, grpIndex, objFlg = false) {
+    //既存イベントを選択していた場合リセット
+    currentRegisteredEvent = '';
+    // 全部のイベントの背景色をクリアする
+    var events = document.getElementsByClassName('registerdEvents');
+    var eventsForObj = document.getElementsByClassName('registerdEventsForObj');
+    events = Array.from(events);
+    events.forEach(function(event) {
+        event.style.backgroundColor = '';
+    });
+    eventsForObj = Array.from(eventsForObj);
+    eventsForObj.forEach(function(event) {
+        event.style.backgroundColor = '';
+    });
+    //イベント編集コンテナを消す
+    editEvent.style.display = 'none';
+    //イベントグループの色を変更
+    changeEventGroupColor(e, true)
+    //イベントグループを選択状態にする
+    var type = objFlg ? 'obj' : 'map';
+    currentEventGroup = type + '_' + grpIndex;
+}
+
+function changeEventGroupColor(e, grpFlg) {
+    // いったん全部のグループの背景色をクリアする（lavenderに戻す）
+    var evtGroups = document.getElementsByClassName('eventGroups');
+    var evtGroupsForObj = document.getElementsByClassName('eventGroupsForObj');
+    evtGroups = Array.from(evtGroups);
+    evtGroups.forEach(function(event) {
+        event.style.backgroundColor = 'lavender';
+    });
+    evtGroupsForObj = Array.from(evtGroupsForObj);
+    evtGroupsForObj.forEach(function(event) {
+        event.style.backgroundColor = 'lavender';
+    });
+    //グループの背景色を変える
+    if(grpFlg) {
+        //グループクリック時 div > p
+        e.target.parentNode.style.backgroundColor = 'plum';
+    } else {
+        //登録済みイベントクリック時　div > ol > li
+        e.target.parentNode.parentNode.style.backgroundColor = 'plum';
+    }
+}
+
 //クリックされた座標を返す
 //param1 : canvas要素
 //param2 : eventオブジェクト
@@ -2028,6 +2174,47 @@ function getMousePosition(currentMapCanvas, evt) {
       x: evt.clientX - rect.left,
       y: evt.clientY - rect.top
     };
+}
+
+//イベントグループを追加する
+function addEventGroup(objFlg = false) {
+        if (objFlg == false) {
+            //eventsプロパティ（大枠）がなければ追加する
+            if (!currentMapTip.hasOwnProperty('events')) {
+                currentMapTip.events = new Object();
+                currentMapTip.events.groupIndex = 0;
+            }
+            //グループを追加する
+            var tmpGroupIndex = 0;
+            while(currentMapTip.events.hasOwnProperty(tmpGroupIndex)) {
+                tmpGroupIndex++;
+                if(tmpGroupIndex == 100){
+                    alert("エラー：グループインデックスが100を超えました");
+                    break;
+                }
+            }
+            currentMapTip.events[tmpGroupIndex] = new Object();
+
+        } else {
+            //eventsプロパティ（大枠）がなければ追加する
+            if (!currentMapTip.object.hasOwnProperty('events')) {
+                currentMapTip.object.events = new Object();
+                currentMapTip.object.events.groupIndex = 0;
+            }
+            //グループを追加する
+            var tmpGroupIndex = 0;
+            while(currentMapTip.object.events.hasOwnProperty(tmpGroupIndex)) {
+                tmpGroupIndex++;
+                if(tmpGroupIndex == 100){
+                    alert("エラー：グループインデックスが100を超えました");
+                    break;
+                }
+            }
+            currentMapTip.object.events[tmpGroupIndex] = new Object();
+        }
+        // editEvent.style.display = 'none';
+    //イベントのHTMLを更新
+    updateMapEventHTML();
 }
 
 //マップにイベント追加のdivを表示する
@@ -2065,9 +2252,66 @@ function addEvent(objFlg = false) {
     }
 }
 
+//イベントグループを追加する
+function deleteEventGroup(objFlg = false) {
+        //エラー
+        if (currentEventGroup == '') {
+            alert('削除対象のグループが選択されていません!');
+            return;
+        }
+        //確認
+        var res = confirm('選択中のイベントを削除しますか？');
+        if(!res) return;
+
+        if (objFlg == false) {
+            var index = currentEventGroup.substr(-1);
+            var indexNext = Number(index) + 1;
+            //インデックスをずらす
+            while(currentMapTip.events.hasOwnProperty(indexNext)) {
+                delete currentMapTip.events[index];//参照渡しにならないよう一応削除する
+                currentMapTip.events[index] = JSON.parse(JSON.stringify(currentMapTip.events[indexNext]));//一度文字列にしてパースしてから渡すことで参照が切れる
+                index++;
+                indexNext++;
+            }
+            //残った最後のインデックスだけ削除
+            delete currentMapTip.events[index];
+
+            //グループインデックスをリセット
+            currentEventGroup = '';
+
+            //グループが0になったらeventsごと削除する
+            if(!currentMapTip.events.hasOwnProperty(0)){
+                delete currentMapTip['events'];
+            }
+
+        } else {
+            var index = currentEventGroup.substr(-1);
+            var indexNext = Number(index) + 1;
+            //インデックスをずらす
+            while(currentMapTip.object.events.hasOwnProperty(indexNext)) {
+                delete currentMapTip.object.events[index];//参照渡しにならないよう一応削除する
+                currentMapTip.object.events[index] = JSON.parse(JSON.stringify(currentMapTip.object.events[indexNext]));//一度文字列にしてパースしてから渡すことで参照が切れる
+                index++;
+                indexNext++;
+            }
+            //残った最後のインデックスだけ削除
+            delete currentMapTip.object.events[index];
+
+            //グループインデックスをリセット
+            currentEventGroup = '';
+
+            //グループが0になったらeventsごと削除する
+            if(!currentMapTip.object.events.hasOwnProperty(0)){
+                delete currentMapTip['events'];
+            }
+        }
+        // editEvent.style.display = 'none';
+    //イベントのHTMLを更新
+    updateMapEventHTML();
+}
+
 //選択中のイベントを削除する
 function deleteEvent(objFlg = false) {
-
     if (currentRegisteredEvent == '') {
         alert('削除対象のイベントが選択されていません!');
         return;
@@ -2078,36 +2322,30 @@ function deleteEvent(objFlg = false) {
         //対象のイベントを取得（ただ削除されるだけ、イベント名の先頭のインデックス番号は変更しない）
         //var delTarget = evt.target.innerHTML;
         //登録ずみイベントのキーを取得
+        //イベントグループのインデックスを取得
+        var evtGrpIndex = currentEventGroup.substr(-1);
         if (objFlg == false) {
-            var evtKeys = Object.keys(currentMapTip.events)
+            var evtKeys = Object.keys(currentMapTip.events[evtGrpIndex])
             //一致するイベントを削除
             for (var i=0; i<evtKeys.length; i++) {
                 if (evtKeys[i] == currentRegisteredEvent) {
-                    delete currentMapTip.events[currentRegisteredEvent];
+                    delete currentMapTip.events[evtGrpIndex][currentRegisteredEvent];
                     currentRegisteredEvent = '';
 
-                    //イベントが0個になったら、eventsプロパティごと削除（エディタ画面にて、イベント0なのに登録はされているとみなされるから）
-                    evtKeys = Object.keys(currentMapTip.events)
-                    if(evtKeys.length == 0) {
-                        delete currentMapTip['events'];
-                    }
+                    //イベントが0個になってもグループ削除は行わない
 
                     break;
                 }
             }
         } else {
-            var evtKeys = Object.keys(currentMapTip.object.events)
+            var evtKeys = Object.keys(currentMapTip.object.events[evtGrpIndex])
             //一致するイベントを削除
             for (var i=0; i<evtKeys.length; i++) {
                 if (evtKeys[i] == currentRegisteredEvent) {
-                    delete currentMapTip.object.events[currentRegisteredEvent];
+                    delete currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent];
                     currentRegisteredEvent = '';
 
-                    //イベントが0個になったら、eventsプロパティごと削除（エディタ画面にて、イベント0なのに登録はされているとみなされるから）
-                    evtKeys = Object.keys(currentMapTip.object.events)
-                    if(evtKeys.length == 0) {
-                        delete currentMapTip.object['events'];
-                    }
+                    //イベントが0個になってもグループ削除は行わない
 
                     break;
                 }
@@ -2171,22 +2409,26 @@ function setEvent(eventName, objFlg = false) {
     } else {
         html = '<p style="background-color:violet;" align="center">==オブジェクトイベント==</p>';
     }
+
+    //イベントグループのインデックスを取得
+    var evtGrpIndex = currentEventGroup.substr(-1);
+
     switch (eventName) {
         case 'talk':
             var talkContent = '';
             var wipeSrc = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    talkContent = currentMapTip.events[orgEvtName].talkContent;
-                    if (currentMapTip.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = currentMapTip.events[orgEvtName].wipe;
+                    talkContent = currentMapTip.events[evtGrpIndex][orgEvtName].talkContent;
+                    if (currentMapTip.events[evtGrpIndex][orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = currentMapTip.events[evtGrpIndex][orgEvtName].wipe;
                     }
                 }
             } else {
                 if (registeredFlg) {
-                    talkContent = currentMapTip.object.events[orgEvtName].talkContent;
-                    if (currentMapTip.object.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = currentMapTip.object.events[orgEvtName].wipe;
+                    talkContent = currentMapTip.object.events[evtGrpIndex][orgEvtName].talkContent;
+                    if (currentMapTip.object.events[evtGrpIndex][orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = currentMapTip.object.events[evtGrpIndex][orgEvtName].wipe;
                     }
                 }
             }
@@ -2206,16 +2448,16 @@ function setEvent(eventName, objFlg = false) {
             var wipeSrc = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    questionContent = currentMapTip.events[orgEvtName].questionContent;
-                    if (currentMapTip.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = currentMapTip.events[orgEvtName].wipe;
+                    questionContent = currentMapTip.events[evtGrpIndex][orgEvtName].questionContent;
+                    if (currentMapTip.events[evtGrpIndex][orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = currentMapTip.events[evtGrpIndex][orgEvtName].wipe;
                     }
                 }
             } else {
                 if (registeredFlg) {
-                    questionContent = currentMapTip.object.events[orgEvtName].questionContent;
-                    if (currentMapTip.object.events[orgEvtName].hasOwnProperty('wipe')){
-                        wipeSrc = currentMapTip.object.events[orgEvtName].wipe;
+                    questionContent = currentMapTip.object.events[evtGrpIndex][orgEvtName].questionContent;
+                    if (currentMapTip.object.events[evtGrpIndex][orgEvtName].hasOwnProperty('wipe')){
+                        wipeSrc = currentMapTip.object.events[evtGrpIndex][orgEvtName].wipe;
                     }
                 }
             }
@@ -2234,11 +2476,11 @@ function setEvent(eventName, objFlg = false) {
             var transitionMap = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    transitionMap = currentMapTip.events[orgEvtName].transitionMap;
+                    transitionMap = currentMapTip.events[evtGrpIndex][orgEvtName].transitionMap;
                 }
             } else {
                 if (registeredFlg) {
-                    transitionMap = currentMapTip.object.events[orgEvtName].transitionMap;
+                    transitionMap = currentMapTip.object.events[evtGrpIndex][orgEvtName].transitionMap;
                 }
             }
             html += '<p>【遷移】</p>';
@@ -2256,8 +2498,8 @@ function setEvent(eventName, objFlg = false) {
             var transitionX = '';
             var transitionY = '';
             if (registeredFlg) {
-                transitionX = currentMapTip.events[orgEvtName].transitionX;
-                transitionY = currentMapTip.events[orgEvtName].transitionY;
+                transitionX = currentMapTip.events[evtGrpIndex][orgEvtName].transitionX;
+                transitionY = currentMapTip.events[evtGrpIndex][orgEvtName].transitionY;
             }
             html += '<p>遷移先マップチップを選択</p>';
             html += '<p>遷移先（<span id="transitionX">' + transitionX + '</span>：<span id="transitionY">' + transitionY + '</span>）</p>';
@@ -2268,7 +2510,7 @@ function setEvent(eventName, objFlg = false) {
             var directions = ['up','right','down','left'];
             var direction = '';
             if (registeredFlg) {
-                direction = currentMapTip.events[orgEvtName].transitionDirection;
+                direction = currentMapTip.events[evtGrpIndex][orgEvtName].transitionDirection;
             }
             html += '<p>遷移後のディレクションを選択</p>';
             html += '<select id="transitionDirection" onChange="">';
@@ -2308,53 +2550,53 @@ function setEvent(eventName, objFlg = false) {
             var battleOrders;
             if (objFlg == false) {
                 if (registeredFlg) {
-                    charaGroup = currentMapTip.events[orgEvtName].charaGroup;
-                    isBoss = currentMapTip.events[orgEvtName].isBoss;
+                    charaGroup = currentMapTip.events[evtGrpIndex][orgEvtName].charaGroup;
+                    isBoss = currentMapTip.events[evtGrpIndex][orgEvtName].isBoss;
                     //キャラ1
-                    charaId1 = currentMapTip.events[orgEvtName].chara1;
+                    charaId1 = currentMapTip.events[evtGrpIndex][orgEvtName].chara1;
                     if(charaId1 != "") chara1 = projectDataObj['characters'][charaId1].chrName;
                     //キャラ2
-                    charaId2 = currentMapTip.events[orgEvtName].chara2;
+                    charaId2 = currentMapTip.events[evtGrpIndex][orgEvtName].chara2;
                     if(charaId2 != "") chara2 = projectDataObj['characters'][charaId2].chrName;
                     //キャラ3
-                    charaId3 = currentMapTip.events[orgEvtName].chara3;
+                    charaId3 = currentMapTip.events[evtGrpIndex][orgEvtName].chara3;
                     if(charaId3 != "") chara3 = projectDataObj['characters'][charaId3].chrName;
                     //キャラ4
-                    charaId4 = currentMapTip.events[orgEvtName].chara4;
+                    charaId4 = currentMapTip.events[evtGrpIndex][orgEvtName].chara4;
                     if(charaId4 != "") chara4 = projectDataObj['characters'][charaId4].chrName;
                     //キャラ5
-                    charaId5 = currentMapTip.events[orgEvtName].chara5;
+                    charaId5 = currentMapTip.events[evtGrpIndex][orgEvtName].chara5;
                     if(charaId5 != "") chara5 = projectDataObj['characters'][charaId5].chrName;
                     //キャラ6
-                    charaId6 = currentMapTip.events[orgEvtName].chara6;
+                    charaId6 = currentMapTip.events[evtGrpIndex][orgEvtName].chara6;
                     if(charaId6 != "") chara6 = projectDataObj['characters'][charaId6].chrName;
                     //バトルオーダー
-                    battleOrders = currentMapTip.events[orgEvtName]['battleOrders'];
+                    battleOrders = currentMapTip.events[evtGrpIndex][orgEvtName]['battleOrders'];
                 }
             } else {
                 if (registeredFlg) {
-                    charaGroup = currentMapTip.object.events[orgEvtName].charaGroup;
-                    isBoss = currentMapTip.object.events[orgEvtName].isBoss;
+                    charaGroup = currentMapTip.object.events[evtGrpIndex][orgEvtName].charaGroup;
+                    isBoss = currentMapTip.object.events[evtGrpIndex][orgEvtName].isBoss;
                     //キャラ1
-                    charaId1 = currentMapTip.object.events[orgEvtName].chara1;
+                    charaId1 = currentMapTip.object.events[evtGrpIndex][orgEvtName].chara1;
                     if(charaId1 != "") chara1 = projectDataObj['characters'][charaId1].chrName;
                     //キャラ2
-                    charaId2 = currentMapTip.object.events[orgEvtName].chara2;
+                    charaId2 = currentMapTip.object.events[evtGrpIndex][orgEvtName].chara2;
                     if(charaId2 != "") chara2 = projectDataObj['characters'][charaId2].chrName;
                     //キャラ3
-                    charaId3 = currentMapTip.object.events[orgEvtName].chara3;
+                    charaId3 = currentMapTip.object.events[evtGrpIndex][orgEvtName].chara3;
                     if(charaId3 != "") chara3 = projectDataObj['characters'][charaId3].chrName;
                     //キャラ4
-                    charaId4 = currentMapTip.object.events[orgEvtName].chara4;
+                    charaId4 = currentMapTip.object.events[evtGrpIndex][orgEvtName].chara4;
                     if(charaId4 != "") chara4 = projectDataObj['characters'][charaId4].chrName;
                     //キャラ5
-                    charaId5 = currentMapTip.object.events[orgEvtName].chara5;
+                    charaId5 = currentMapTip.object.events[evtGrpIndex][orgEvtName].chara5;
                     if(charaId5 != "") chara5 = projectDataObj['characters'][charaId5].chrName;
                     //キャラ6
-                    charaId6 = currentMapTip.object.events[orgEvtName].chara6;
+                    charaId6 = currentMapTip.object.events[evtGrpIndex][orgEvtName].chara6;
                     if(charaId6 != "") chara6 = projectDataObj['characters'][charaId6].chrName;
                     //バトルオーダー
-                    battleOrders = currentMapTip.object.events[orgEvtName]['battleOrders'];
+                    battleOrders = currentMapTip.object.events[evtGrpIndex][orgEvtName]['battleOrders'];
                 }
             }
             html += '<p>【バトル】</p>';
@@ -2453,7 +2695,7 @@ function setEvent(eventName, objFlg = false) {
             if (objFlg == false) {
                 if (registeredFlg) {
                     //ツールのイベントタイプ（ひろいor使用）を取得
-                    toolEventType = currentMapTip.events[orgEvtName].type;
+                    toolEventType = currentMapTip.events[evtGrpIndex][orgEvtName].type;
                 }
                 //マップイベントのときの分岐（取得・使用）
                 //取得の場合　単に道具を取得して終わり
@@ -2473,7 +2715,7 @@ function setEvent(eventName, objFlg = false) {
             } else {
                 if (registeredFlg) {
                     //ツールのイベントタイプ（ひろいor使用）を取得
-                    toolEventType = currentMapTip.object.events[orgEvtName].type;
+                    toolEventType = currentMapTip.object.events[evtGrpIndex][orgEvtName].type;
                 }
                 //オブジェクトイベントのときの分岐
                 //ラジオボタンでバリューチェンジ（取得or使用)
@@ -2509,7 +2751,7 @@ function setEvent(eventName, objFlg = false) {
             if (objFlg == false) {
                 if (registeredFlg) {
                     //エフェクトのタイプを取得
-                    effectType = currentMapTip.events[orgEvtName].type;
+                    effectType = currentMapTip.events[evtGrpIndex][orgEvtName].type;
                 }
                 //ラジオボタンでバリューチェンジ（取得or使用)
                 html += '<div>';
@@ -2527,16 +2769,16 @@ function setEvent(eventName, objFlg = false) {
                         case 'shake':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※画面揺れの場合、揺れタイプと、音を設定</p>';
-                            html += getShakeTypeLists(currentMapTip.events[orgEvtName].shakeType);
-                            html += getSoundLists(currentMapTip.events[orgEvtName].sound);
+                            html += getShakeTypeLists(currentMapTip.events[evtGrpIndex][orgEvtName].shakeType);
+                            html += getSoundLists(currentMapTip.events[evtGrpIndex][orgEvtName].sound);
                             html += '</div>';
                             currentEffectType = 'shake';
                         break;
                         case 'reaction':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
-                            html += getSoundLists(currentMapTip.events[orgEvtName].sound);
-                            html += getReactionLists(currentMapTip.events[orgEvtName].reactType);
+                            html += getSoundLists(currentMapTip.events[evtGrpIndex][orgEvtName].sound);
+                            html += getReactionLists(currentMapTip.events[evtGrpIndex][orgEvtName].reactType);
                             html += '</div>';
                             currentEffectType = 'reaction';
                         break;
@@ -2550,21 +2792,21 @@ function setEvent(eventName, objFlg = false) {
                             //アニメーションタイプ
                             html += '<br>';
                             html += '<br>';
-                            html += getAnimationTypeLists(currentMapTip.events[orgEvtName].animeType);
+                            html += getAnimationTypeLists(currentMapTip.events[evtGrpIndex][orgEvtName].animeType);
                             //画像
                             html += '<br>';
-                            html += getFlashAnimationLists(currentMapTip.events[orgEvtName].flashAnimeType); //flashはテキストのみ（手動運用）
+                            html += getFlashAnimationLists(currentMapTip.events[evtGrpIndex][orgEvtName].flashAnimeType); //flashはテキストのみ（手動運用）
                             html += '<br>';
-                            html += getObjectAnimationLists(currentMapTip.events[orgEvtName].objectAnimeType); //objectは、マップチップターンを利用する
+                            html += getObjectAnimationLists(currentMapTip.events[evtGrpIndex][orgEvtName].objectAnimeType); //objectは、マップチップターンを利用する
                             //セル
                             html += '<br>';
-                            html += getAnimationCells(JSON.stringify(currentMapTip.events[orgEvtName].animationCells)); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
+                            html += getAnimationCells(JSON.stringify(currentMapTip.events[evtGrpIndex][orgEvtName].animationCells)); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
                             html += '<br>';
                             //揺れフラグ
-                            html += getShakeTypeLists(currentMapTip.events[orgEvtName].shakeType);
+                            html += getShakeTypeLists(currentMapTip.events[evtGrpIndex][orgEvtName].shakeType);
                             //サウンド
                             html += '<br>';
-                            html += getSoundLists(currentMapTip.events[orgEvtName].sound);
+                            html += getSoundLists(currentMapTip.events[evtGrpIndex][orgEvtName].sound);
                             html += '</div>';
                             //アニメーションモードに切り替える
                             currentEffectType = 'animation';
@@ -2578,13 +2820,13 @@ function setEvent(eventName, objFlg = false) {
                             //現在のcanvasを保存する
                             evacuateCanvas = currentMapContext.getImageData(0,0,currentMapCanvas.width,currentMapCanvas.height);
                             //アニメーションセルの実データコピー
-                            tmpAnimationCells = currentMapTip.events[orgEvtName].animationCells;
+                            tmpAnimationCells = currentMapTip.events[evtGrpIndex][orgEvtName].animationCells;
                             //既存アニメーションセルをマップに描画
-                            for (var i=0; i<Object.keys(currentMapTip.events[orgEvtName].animationCells).length; i++) {
+                            for (var i=0; i<Object.keys(currentMapTip.events[evtGrpIndex][orgEvtName].animationCells).length; i++) {
                                 // パスをリセット
                                 currentMapContext.beginPath () ;
                                 // レクタングルの座標(50,50)とサイズ(75,50)を指定
-                                currentMapContext.rect(currentMapTip.events[orgEvtName].animationCells[i]["x"]*mapLength ,currentMapTip.events[orgEvtName].animationCells[i]["y"]*mapLength , 32, 32);
+                                currentMapContext.rect(currentMapTip.events[evtGrpIndex][orgEvtName].animationCells[i]["x"]*mapLength ,currentMapTip.events[evtGrpIndex][orgEvtName].animationCells[i]["y"]*mapLength , 32, 32);
                                 // 線の色
                                 currentMapContext.strokeStyle = "orange";
                                 // 線の太さ
@@ -2602,7 +2844,7 @@ function setEvent(eventName, objFlg = false) {
             } else {
                 if (registeredFlg) {
                     //エフェクトのタイプを取得
-                    effectType = currentMapTip.object.events[orgEvtName].type;
+                    effectType = currentMapTip.object.events[evtGrpIndex][orgEvtName].type;
                 }
                 //ラジオボタンでバリューチェンジ（取得or使用)
                 html += '<div>';
@@ -2620,16 +2862,16 @@ function setEvent(eventName, objFlg = false) {
                         case 'shake':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※面揺れの場合、揺れタイプと、音を設定</p>';
-                            html += getShakeTypeLists(currentMapTip.object.events[orgEvtName].shakeType);
-                            html += getSoundLists(currentMapTip.object.events[orgEvtName].sound);
+                            html += getShakeTypeLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].shakeType);
+                            html += getSoundLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].sound);
                             html += '</div>';
                             currentEffectType = 'shake';
                         break;
                         case 'reaction':
                             html += '<div id="selectEffectContainer">';
                             html += '<p>※リアクションの場合、音と、表示するマークを設定</p>';
-                            html += getSoundLists(currentMapTip.object.events[orgEvtName].sound);
-                            html += getReactionLists(currentMapTip.object.events[orgEvtName].reactType);
+                            html += getSoundLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].sound);
+                            html += getReactionLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].reactType);
                             html += '</div>';
                             currentEffectType = 'reaction';
                         break;
@@ -2643,21 +2885,21 @@ function setEvent(eventName, objFlg = false) {
                             //アニメーションタイプ
                             html += '<br>';
                             html += '<br>';
-                            html += getAnimationTypeLists(currentMapTip.object.events[orgEvtName].animeType);
+                            html += getAnimationTypeLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].animeType);
                             //画像
                             html += '<br>';
-                            html += getFlashAnimationLists(currentMapTip.object.events[orgEvtName].flashAnimeType); //flashはテキストのみ（手動運用）
+                            html += getFlashAnimationLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].flashAnimeType); //flashはテキストのみ（手動運用）
                             html += '<br>';
-                            html += getObjectAnimationLists(currentMapTip.object.events[orgEvtName].objectAnimeType); //objectは、マップチップターンを利用する
+                            html += getObjectAnimationLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].objectAnimeType); //objectは、マップチップターンを利用する
                             //セル
                             html += '<br>';
-                            html += getAnimationCells(JSON.stringify(currentMapTip.object.events[orgEvtName].animationCells)); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
+                            html += getAnimationCells(JSON.stringify(currentMapTip.object.events[evtGrpIndex][orgEvtName].animationCells)); //テキストは登録済みのデータから後付けする（保村の時に使いやすい様に表示する）。データに従ってマップに枠をつける。
                             html += '<br>';
                             //揺れフラグ
-                            html += getShakeTypeLists(currentMapTip.object.events[orgEvtName].shakeType);
+                            html += getShakeTypeLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].shakeType);
                             //サウンド
                             html += '<br>';
-                            html += getSoundLists(currentMapTip.object.events[orgEvtName].sound);
+                            html += getSoundLists(currentMapTip.object.events[evtGrpIndex][orgEvtName].sound);
                             html += '</div>';
                             //アニメーションモードに切り替える
                             currentEffectType = 'animation';
@@ -2671,13 +2913,13 @@ function setEvent(eventName, objFlg = false) {
                             //現在のcanvasを保存する
                             evacuateCanvas = currentMapContext.getImageData(0,0,currentMapCanvas.width,currentMapCanvas.height);
                             //アニメーションセルの実データコピー
-                            tmpAnimationCells = currentMapTip.object.events[orgEvtName].animationCells;
+                            tmpAnimationCells = currentMapTip.object.events[evtGrpIndex][orgEvtName].animationCells;
                             //既存アニメーションセルをマップに描画
-                            for (var i=0; i<Object.keys(currentMapTip.object.events[orgEvtName].animationCells).length; i++) {
+                            for (var i=0; i<Object.keys(currentMapTip.object.events[evtGrpIndex][orgEvtName].animationCells).length; i++) {
                                 // パスをリセット
                                 currentMapContext.beginPath () ;
                                 // レクタングルの座標(50,50)とサイズ(75,50)を指定
-                                currentMapContext.rect(currentMapTip.object.events[orgEvtName].animationCells[i]["x"]*mapLength ,currentMapTip.object.events[orgEvtName].animationCells[i]["y"]*mapLength , 32, 32);
+                                currentMapContext.rect(currentMapTip.object.events[evtGrpIndex][orgEvtName].animationCells[i]["x"]*mapLength ,currentMapTip.object.events[evtGrpIndex][orgEvtName].animationCells[i]["y"]*mapLength , 32, 32);
                                 // 線の色
                                 currentMapContext.strokeStyle = "orange";
                                 // 線の太さ
@@ -2729,19 +2971,19 @@ function setEvent(eventName, objFlg = false) {
             var startSound = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    drawSpeed = currentMapTip.events[orgEvtName].drawSpeed;
-                    startSound = currentMapTip.events[orgEvtName].startSound;
-                    while(currentMapTip.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
-                        chips.push(currentMapTip.events[orgEvtName]['chip_'+chipIndex]);
+                    drawSpeed = currentMapTip.events[evtGrpIndex][orgEvtName].drawSpeed;
+                    startSound = currentMapTip.events[evtGrpIndex][orgEvtName].startSound;
+                    while(currentMapTip.events[evtGrpIndex][orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
+                        chips.push(currentMapTip.events[evtGrpIndex][orgEvtName]['chip_'+chipIndex]);
                         chipIndex++;
                     }
                 }
             } else {
                 if (registeredFlg) {
-                    drawSpeed = currentMapTip.object.events[orgEvtName].drawSpeed;
-                    startSound = currentMapTip.object.events[orgEvtName].startSound;
-                    while(currentMapTip.object.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
-                        chips.push(currentMapTip.object.events[orgEvtName]['chip_'+chipIndex]);
+                    drawSpeed = currentMapTip.object.events[evtGrpIndex][orgEvtName].drawSpeed;
+                    startSound = currentMapTip.object.events[evtGrpIndex][orgEvtName].startSound;
+                    while(currentMapTip.object.events[evtGrpIndex][orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
+                        chips.push(currentMapTip.object.events[evtGrpIndex][orgEvtName]['chip_'+chipIndex]);
                         chipIndex++;
                     }
                 }
@@ -2881,9 +3123,12 @@ function setEvent(eventName, objFlg = false) {
                     //ツール
                         html += '      <p>オブジェクトタイプ：ツール</p>';
                         html += '      <p>設定済みイベント一覧</p>';
-                        html += '      <ol>';
-                        html += '      <li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, true)">拾いイベント（固定）</li>';
-                        html += '      </ol>';
+                        html += '      <div class="eventGroupsForObj" style="background-color: lavender">';
+                        html += '          <p onClick="changeGroupIndex(event, 0, true)">グループ0</p>';
+                        html += '          <ol>';
+                        html += '              <li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, 0, 0, true)">拾いイベント（固定）</li>';
+                        html += '          </ol>';
+                        html += '      </div>';
                         var objTxt = JSON.stringify(chips[i]['newMoveObj']);
                         html += '      <p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';                        
                     } else {
@@ -2891,13 +3136,20 @@ function setEvent(eventName, objFlg = false) {
                         html += '      <p>オブジェクトタイプ：キャラクター</p>';
                         html += '      <p>キャラ名：' + chips[i]['newMoveObj']['charaName'] + '</p>';
                         html += '      <p>設定済みイベント一覧</p>';
-                        html += '      <ol>';
+                        var groupIndex = 0;
                         var evtIndex = 0;
-                        for( key in chips[i]['newMoveObj']['events'] ) {
-                            html += '      <li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + evtIndex + '\', true)">' + key + '</li>'; //やるとしたら、editEvent2に表示する感じにする
-                            evtIndex++;
+                        while (chips[i]['newMoveObj']['events'].hasOwnProperty(groupIndex)) {
+                            html += '   <div class="eventGroupsForObj" style="background-color: lavender">';
+                            html += '       <p onClick="changeGroupIndex(event, \'' + groupIndex + '\', true)">グループ' + groupIndex + '</p>';
+                            html += '       <ol>';
+                            for( key in chips[i]['newMoveObj']['events'][groupIndex] ) {
+                                html += '       <li class="registerdEventsForObj" onclick="selectRegisterdEvent(event, \'' + groupIndex + '\',\'' + evtIndex + '\', true)">' + key + '</li>';
+                                evtIndex++;
+                            }
+                            html += '       </ol>';
+                            html += '   </div>';
+                            groupIndex++;
                         }
-                        html += '      </ol>';
                         var objTxt = JSON.stringify(chips[i]['newMoveObj']);
                         html += '      <p style="width:200px; overflow: scroll;">オブジェクトtxt：<span class="objTxt" style="font-size:10px; color:red;">' + objTxt + '</span></p>';
                     }
@@ -2936,17 +3188,17 @@ function setEvent(eventName, objFlg = false) {
             var sceneEvtIndex = 1;
             if (objFlg == false) {
                 if (registeredFlg) {
-                    while(currentMapTip.events[orgEvtName].hasOwnProperty('sceneEvt_'+sceneEvtIndex)) {
-                        sceneEvts.push(currentMapTip.events[orgEvtName]['sceneEvt_'+sceneEvtIndex]);
-                        cutSceneSrc = currentMapTip.events[orgEvtName]['cutSceneSrc'];
+                    while(currentMapTip.events[evtGrpIndex][orgEvtName].hasOwnProperty('sceneEvt_'+sceneEvtIndex)) {
+                        sceneEvts.push(currentMapTip.events[evtGrpIndex][orgEvtName]['sceneEvt_'+sceneEvtIndex]);
+                        cutSceneSrc = currentMapTip.events[evtGrpIndex][orgEvtName]['cutSceneSrc'];
                         sceneEvtIndex++;
                     }
                 }
             } else {
                 if (registeredFlg) {
-                    while(currentMapTip.object.events[orgEvtName].hasOwnProperty('sceneEvt_'+sceneEvtIndex)) {
-                        sceneEvts.push(currentMapTip.object.events[orgEvtName]['sceneEvt_'+sceneEvtIndex]);
-                        cutSceneSrc = currentMapTip.object.events[orgEvtName]['cutSceneSrc'];
+                    while(currentMapTip.object.events[evtGrpIndex][orgEvtName].hasOwnProperty('sceneEvt_'+sceneEvtIndex)) {
+                        sceneEvts.push(currentMapTip.object.events[evtGrpIndex][orgEvtName]['sceneEvt_'+sceneEvtIndex]);
+                        cutSceneSrc = currentMapTip.object.events[evtGrpIndex][orgEvtName]['cutSceneSrc'];
                         sceneEvtIndex++;
                     }
                 }
@@ -2956,11 +3208,11 @@ function setEvent(eventName, objFlg = false) {
             html += '<p>【シーン】</p>';
             html += getCutSceneLists(cutSceneSrc);//一応シーンもスペシャルスキルも全部選択肢に入れる。カットシーンで必殺技のイメージを使いたいケースも考えられるから。
             // html += '<button onclick="quitAddTargetMoveChip()">やめる</button>';
-            html += '<button onclick="addSceneEventContainer()">追加する</button>';
-            html += '<button onclick="deleteSceneEventContainer()">削除する</button>';
+            html += '<button onclick="addSceneEventContainer()">シーンイベントを追加する</button>';
             html += '<div id="targetSceneEventContainerParent">';
             html += '  <div id="addChildEle" style="display:none">';
             html += '    <div class="targetSceneEventContainer">';
+            html += '      <button onclick="deleteSceneEventContainer(this)">このシーンイベントを削除する</button>';
             html +=        getWipeLists();
             html += '      <p>会話の内容を入力</p>';
             html += '      <textarea id="talk" class="talkContent"></textarea>';
@@ -2972,6 +3224,7 @@ function setEvent(eventName, objFlg = false) {
             //設定済みのシーンイベントを格納
             for (var i=0; i<sceneEvts.length; i++) {
                 html += '  <div class="targetSceneEventContainer">';
+                html += '    <button onclick="deleteSceneEventContainer(this)">このシーンイベントを削除する</button>';
                 html +=      getWipeLists(sceneEvts[i].wipeSrc);
                 html += '    <p>会話の内容を入力</p>';
                 if (sceneEvts[i].hasOwnProperty("talkContent")){
@@ -3006,11 +3259,11 @@ function setEvent(eventName, objFlg = false) {
             var mainCharaName = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    mainCharaName = currentMapTip.events[orgEvtName].name;
+                    mainCharaName = currentMapTip.events[evtGrpIndex][orgEvtName].name;
                 }
             } else {
                 if (registeredFlg) {
-                    mainCharaName = currentMapTip.object.events[orgEvtName].name;
+                    mainCharaName = currentMapTip.object.events[evtGrpIndex][orgEvtName].name;
                 }
             }
             html += '<p>【主人公変更】</p>';
@@ -3029,11 +3282,11 @@ function setEvent(eventName, objFlg = false) {
             var followData = null;
             if (objFlg == false) {
                 if (registeredFlg) {
-                    followData = currentMapTip.events[orgEvtName];
+                    followData = currentMapTip.events[evtGrpIndex][orgEvtName];
                 }
             } else {
                 if (registeredFlg) {
-                    followData = currentMapTip.object.events[orgEvtName];
+                    followData = currentMapTip.object.events[evtGrpIndex][orgEvtName];
                 }
             }
             html += '<p>【追跡】</p>';
@@ -3061,13 +3314,13 @@ function setEvent(eventName, objFlg = false) {
             var delY = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    delX = currentMapTip.events[orgEvtName]['delX'];
-                    delY = currentMapTip.events[orgEvtName]['delY'];
+                    delX = currentMapTip.events[evtGrpIndex][orgEvtName]['delX'];
+                    delY = currentMapTip.events[evtGrpIndex][orgEvtName]['delY'];
                 }
             } else {
                 if (registeredFlg) {
-                    delX = currentMapTip.object.events[orgEvtName]['delX'];
-                    delY = currentMapTip.object.events[orgEvtName]['delY'];
+                    delX = currentMapTip.object.events[evtGrpIndex][orgEvtName]['delX'];
+                    delY = currentMapTip.object.events[evtGrpIndex][orgEvtName]['delY'];
                 }
             }
             html += '<p>【オブジェクト削除】</p>';
@@ -3102,28 +3355,28 @@ function setEvent(eventName, objFlg = false) {
             var startSound = '';
             if (objFlg == false) {
                 if (registeredFlg) {
-                    targetType = currentMapTip.events[orgEvtName].targetType;
-                    actionMode = currentMapTip.events[orgEvtName].actionMode;
-                    afterDirection = currentMapTip.events[orgEvtName].afterDirection;
-                    startSound = currentMapTip.events[orgEvtName].startSound;
+                    targetType = currentMapTip.events[evtGrpIndex][orgEvtName].targetType;
+                    actionMode = currentMapTip.events[evtGrpIndex][orgEvtName].actionMode;
+                    afterDirection = currentMapTip.events[evtGrpIndex][orgEvtName].afterDirection;
+                    startSound = currentMapTip.events[evtGrpIndex][orgEvtName].startSound;
                     if (targetType == 'charaObj') {
                     //ターゲットがキャラオブジェクトの場合、横倒し対象のチップ情報を取得する
-                        while(currentMapTip.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
-                            chips.push(currentMapTip.events[orgEvtName]['chip_'+chipIndex]);
+                        while(currentMapTip.events[evtGrpIndex][orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
+                            chips.push(currentMapTip.events[evtGrpIndex][orgEvtName]['chip_'+chipIndex]);
                             chipIndex++;
                         }
                     }
                 }
             } else {
                 if (registeredFlg) {
-                    targetType = currentMapTip.object.events[orgEvtName].targetType;
-                    actionMode = currentMapTip.object.events[orgEvtName].actionMode;
-                    afterDirection = currentMapTip.object.events[orgEvtName].afterDirection;
-                    startSound = currentMapTip.object.events[orgEvtName].startSound;
+                    targetType = currentMapTip.object.events[evtGrpIndex][orgEvtName].targetType;
+                    actionMode = currentMapTip.object.events[evtGrpIndex][orgEvtName].actionMode;
+                    afterDirection = currentMapTip.object.events[evtGrpIndex][orgEvtName].afterDirection;
+                    startSound = currentMapTip.object.events[evtGrpIndex][orgEvtName].startSound;
                     if (targetType == 'charaObj') {
                     //ターゲットがキャラオブジェクトの場合、横倒し対象のチップ情報を取得する
-                        while(currentMapTip.object.events[orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
-                            chips.push(currentMapTip.object.events[orgEvtName]['chip_'+chipIndex]);
+                        while(currentMapTip.object.events[evtGrpIndex][orgEvtName].hasOwnProperty('chip_'+chipIndex)) {
+                            chips.push(currentMapTip.object.events[evtGrpIndex][orgEvtName]['chip_'+chipIndex]);
                             chipIndex++;
                         }
                     }
@@ -3880,6 +4133,9 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
     var html = '';
     var ToolEventContainer = document.getElementById('ToolEventContainer');
 
+    //イベントグループのインデックスを取得
+    var evtGrpIndex = currentEventGroup.substr(-1);
+
     switch (type) {
         //getの場合、以下をhtmlにセット
         //道具一覧
@@ -3893,9 +4149,9 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
             var toolId = "";
             if (exsistEvtFlg) {
                 if (!objFlg) {
-                    toolId = currentMapTip.events[evtNameKey].toolId;
+                    toolId = currentMapTip.events[evtGrpIndex][evtNameKey].toolId;
                 } else {
-                    toolId = currentMapTip.object.events[evtNameKey].toolId;
+                    toolId = currentMapTip.object.events[evtGrpIndex][evtNameKey].toolId;
                 }
             }
 
@@ -3933,22 +4189,22 @@ function setToolEventContainer(type, exsistEvtFlg=false, evtNameKey='', objFlg=f
             var wipeSrc = "";
             if (exsistEvtFlg) {
                 if (!objFlg) {
-                    toolId = currentMapTip.events[evtNameKey].toolId;
-                    OKtalkContent = currentMapTip.events[evtNameKey].OKtalkContent;
-                    NGtalkContent = currentMapTip.events[evtNameKey].NGtalkContent;
-                    delToolFlg = currentMapTip.events[evtNameKey].delToolFlg;
-                    if (currentMapTip.events[evtNameKey].hasOwnProperty('wipe')) {
-                        var wipe = currentMapTip.events[evtNameKey].wipe;
-                        wipeSrc = currentMapTip.events[evtNameKey].wipe;
+                    toolId = currentMapTip.events[evtGrpIndex][evtNameKey].toolId;
+                    OKtalkContent = currentMapTip.events[evtGrpIndex][evtNameKey].OKtalkContent;
+                    NGtalkContent = currentMapTip.events[evtGrpIndex][evtNameKey].NGtalkContent;
+                    delToolFlg = currentMapTip.events[evtGrpIndex][evtNameKey].delToolFlg;
+                    if (currentMapTip.events[evtGrpIndex][evtNameKey].hasOwnProperty('wipe')) {
+                        var wipe = currentMapTip.events[evtGrpIndex][evtNameKey].wipe;
+                        wipeSrc = currentMapTip.events[evtGrpIndex][evtNameKey].wipe;
                     }
                 } else {
-                    toolId = currentMapTip.object.events[evtNameKey].toolId;
-                    OKtalkContent = currentMapTip.object.events[evtNameKey].OKtalkContent;
-                    NGtalkContent = currentMapTip.object.events[evtNameKey].NGtalkContent;
-                    delToolFlg = currentMapTip.object.events[evtNameKey].delToolFlg;
-                    if (currentMapTip.object.events[evtNameKey].hasOwnProperty('wipe')) {
-                        var wipe = currentMapTip.object.events[evtNameKey].wipe;
-                        wipeSrc = currentMapTip.object.events[evtNameKey].wipe;
+                    toolId = currentMapTip.object.events[evtGrpIndex][evtNameKey].toolId;
+                    OKtalkContent = currentMapTip.object.events[evtGrpIndex][evtNameKey].OKtalkContent;
+                    NGtalkContent = currentMapTip.object.events[evtGrpIndex][evtNameKey].NGtalkContent;
+                    delToolFlg = currentMapTip.object.events[evtGrpIndex][evtNameKey].delToolFlg;
+                    if (currentMapTip.object.events[evtGrpIndex][evtNameKey].hasOwnProperty('wipe')) {
+                        var wipe = currentMapTip.object.events[evtGrpIndex][evtNameKey].wipe;
+                        wipeSrc = currentMapTip.object.events[evtGrpIndex][evtNameKey].wipe;
                     }
                 }
 
@@ -4030,21 +4286,24 @@ function setTransitionMap(mapName, orgEvtName) {
     //遷移先マップをクリア    
     transitionMapContext.clearRect(0, 0, transitionMapCanvas.width, transitionMapCanvas.height);
     //選択したマップを表示（キャンバス表示用に使う、非表示画像）
-    if (!currentMapTip.hasOwnProperty('events')) {
-    //イベントを持っていなかったら
+    //イベントグループのインデックスを取得
+    var evtGrpIndex = currentEventGroup.substr(-1);
+    if (!currentMapTip.hasOwnProperty('events') ||
+        (currentMapTip.hasOwnProperty('events') && Object.keys(currentMapTip.events[evtGrpIndex]).length === 0)) {
+        //イベントを持っていなかったら
         for (var j=0; j<maps.length; j++) {
             if (maps[j].alt == mapName) {
                 transitionMapImage.src = maps[j].getAttribute('src');
             }
         }
     } else {
-    //イベントを持っていたら
-        var keys = Object.keys(currentMapTip.events);
+        //イベントを持っていたら
+        var keys = Object.keys(currentMapTip.events[evtGrpIndex]);
         for (var i=0; i<keys.length; i++) {
             if (keys[i] == orgEvtName) {
             //既存の遷移イベントと一致したら
                 for (var j=0; j<maps.length; j++) {
-                    if (currentMapTip.events[orgEvtName].transitionMap == mapName) {
+                    if (currentMapTip.events[evtGrpIndex][orgEvtName].transitionMap == mapName) {
                     //既存の遷移先イベントのマップと一致したら
                     //既存の遷移先データをセット
                         for (var k=0; k<maps.length; k++) {
@@ -4052,13 +4311,13 @@ function setTransitionMap(mapName, orgEvtName) {
                                 transitionMapImage.src = maps[k].getAttribute('src');
                             }
                         }
-                        var transitionX = currentMapTip.events[orgEvtName].transitionX;
-                        var transitionY = currentMapTip.events[orgEvtName].transitionY;
+                        var transitionX = currentMapTip.events[evtGrpIndex][orgEvtName].transitionX;
+                        var transitionY = currentMapTip.events[evtGrpIndex][orgEvtName].transitionY;
                         document.getElementById('transitionX').innerHTML = transitionX;
                         document.getElementById('transitionY').innerHTML = transitionY;
 
                         var directions = ['up','right','down','left'];
-                        var transitionDirection = currentMapTip.events[orgEvtName].transitionDirection;
+                        var transitionDirection = currentMapTip.events[evtGrpIndex][orgEvtName].transitionDirection;
                         for (var l=0; l<directions.length; l++) {
                             if (directions[l] == transitionDirection) {
                                 document.getElementById('transitionDirection').selectedIndex = l;   
@@ -4789,35 +5048,18 @@ function registEventToObj(evtName, objFlg = false) {
 
         break;
     }
-    var hasEventflg = false;
-    //イベントチェック
-    if (objFlg == false) {
-        if (currentMapTip.hasOwnProperty('events')) {
-            hasEventflg = true;
-        }
-    } else {
-        if (currentMapTip.hasOwnProperty('object') && currentMapTip.object.hasOwnProperty('events')) {
-            hasEventflg = true;
-        }
+
+    //イベントグループが設定されていない場合エラー
+    if (currentEventGroup == '') {
+        alert('イベントグループが選択されていません!');
+        return;
     }
 
     //イベントのキー（日付入り）を取得
     var evtNameKey = getEventKey(evtName);
 
-    //バリデーションも済んだこのタイミングで、現在選択中のマップチップにnew Object()
-    if (objFlg == false) {
-        //新規イベントの場合
-        if (!hasEventflg) {
-            //イベントの配列用オブジェクト
-            currentMapTip.events = new Object();
-        }
-    } else {
-        //新規イベントの場合
-        if (!hasEventflg) {
-            //イベントの配列用オブジェクト
-            currentMapTip.object.events = new Object();
-        }
-    }
+    //イベントグループのインデックスを取得
+    var evtGrpIndex = currentEventGroup.substr(-1);
     //イベントを登録する
     switch (evtName) {
         case 'talk':
@@ -4825,9 +5067,9 @@ function registEventToObj(evtName, objFlg = false) {
                 //新規のイベントの場合
                 if (objFlg == false) {
                     //イベント名のキーごとにオブジェクトを作成
-                    currentMapTip.events[evtNameKey] = new Object();
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object();
                     //トークのコンテンツを格納
-                    currentMapTip.events[evtNameKey]['talkContent'] = document.getElementById('talk').value;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['talkContent'] = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     //やっぱりここで、「getProjectData」だった場合の対処にした方が良いな、想定外の値だったけど、今は終わらせることを優先、、
@@ -4837,14 +5079,14 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.events[evtNameKey]['wipe'] = imgName;
+                        currentMapTip.events[evtGrpIndex][evtNameKey]['wipe'] = imgName;
                     }
                 } else {
                     //イベント名のキーごとにオブジェクトを作成
                     //currentMapTip.object['events'] = new Object(); これいらないな
-                    currentMapTip.object.events[evtNameKey] = new Object();
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object();
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[evtNameKey].talkContent = document.getElementById('talk').value;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey].talkContent = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4853,14 +5095,14 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.object.events[evtNameKey]['wipe'] = imgName;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey]['wipe'] = imgName;
                     }
                 }
             } else {
                 //既存のイベントの場合
                 //var evtNameKey = getEventKey(evtName, objFlg);
                 if (objFlg == false) {
-                    currentMapTip.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4869,10 +5111,10 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.events[currentRegisteredEvent]['wipe'] = imgName;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['wipe'] = imgName;
                     }
                 } else {
-                    currentMapTip.object.events[currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['talkContent'] = document.getElementById('talk').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4881,7 +5123,7 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.object.events[currentRegisteredEvent]['wipe'] = imgName;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['wipe'] = imgName;
                     }
                 }
             }
@@ -4892,9 +5134,9 @@ function registEventToObj(evtName, objFlg = false) {
                 //var evtNameKey = getEventKey(evtName, objFlg);
                 if (objFlg == false) {
                     //イベント名のキーごとにオブジェクトを作成
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //トークのコンテンツを格納
-                    currentMapTip.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4903,13 +5145,13 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.events[evtNameKey]['wipe'] = imgName;
+                        currentMapTip.events[evtGrpIndex][evtNameKey]['wipe'] = imgName;
                     }
                 } else {
                     //イベント名のキーごとにオブジェクトを作成
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[evtNameKey]['questionContent'] = document.getElementById('question').value;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4918,14 +5160,14 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.object.events[evtNameKey]['wipe'] = imgName;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey]['wipe'] = imgName;
                     }
                 }
 
             } else {
                 //既存のイベントの場合
                 if (objFlg == false) {
-                    currentMapTip.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4934,10 +5176,10 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.events[currentRegisteredEvent]['wipe'] = imgName;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['wipe'] = imgName;
                     }
                 } else {
-                    currentMapTip.object.events[currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['questionContent'] = document.getElementById('question').value;
                     //ワイプを登録
                     var selectedWipeImage = document.getElementById('selectedWipeImage');
                     var fullSrc = decodeURI(selectedWipeImage.src);
@@ -4946,7 +5188,7 @@ function registEventToObj(evtName, objFlg = false) {
                         //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                         //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                     } else {
-                        currentMapTip.object.events[currentRegisteredEvent]['wipe'] = imgName;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['wipe'] = imgName;
                     }
                 }
             }
@@ -4958,43 +5200,43 @@ function registEventToObj(evtName, objFlg = false) {
                 //var evtNameKey = getEventKey(evtName, objFlg);
                 if (objFlg == false) {
                     //イベント名のキーごとにオブジェクトを作成
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //トークのコンテンツを格納
-                    currentMapTip.events[evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
                     //トークのコンテンツを格納
-                    currentMapTip.events[evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
-                    currentMapTip.events[evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
                     //トークのコンテンツを格納
-                    currentMapTip.events[evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
                 } else {
                     //イベント名のキーごとにオブジェクトを作成
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['transitionMap'] = document.getElementById('setTransitionMap').value;
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
-                    currentMapTip.object.events[evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['transitionY'] = document.getElementById('transitionY').innerHTML;
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['transitionDirection'] = document.getElementById('transitionDirection').value;
                 }
             } else {
                 //既存のイベントの場合
                 if (objFlg == false) {
                     //トークのコンテンツを格納
-                    currentMapTip.events[currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
                     //トークのコンテンツを格納
-                    currentMapTip.events[currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
-                    currentMapTip.events[currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
                     //トークのコンテンツを格納
-                    currentMapTip.events[currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
                 } else {
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['transitionMap'] = document.getElementById('setTransitionMap').value;
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
-                    currentMapTip.object.events[currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['transitionX'] = document.getElementById('transitionX').innerHTML;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['transitionY'] = document.getElementById('transitionY').innerHTML;
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['transitionDirection'] = document.getElementById('transitionDirection').value;
                 }
             }
             
@@ -5003,18 +5245,18 @@ function registEventToObj(evtName, objFlg = false) {
         case 'battle':
             if (currentRegisteredEvent == '') {
                 if (objFlg == false) {
-                    currentMapTip.events[evtNameKey] = new Object(); 
-                    currentMapTip.events[evtNameKey].charaGroup = document.getElementById('charaGroup').value;
-                    currentMapTip.events[evtNameKey].isBoss = document.getElementById('isBoss').value;
-                    currentMapTip.events[evtNameKey]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
-                    currentMapTip.events[evtNameKey]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
-                    currentMapTip.events[evtNameKey]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
-                    currentMapTip.events[evtNameKey]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
-                    currentMapTip.events[evtNameKey]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
-                    currentMapTip.events[evtNameKey]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey].charaGroup = document.getElementById('charaGroup').value;
+                    currentMapTip.events[evtGrpIndex][evtNameKey].isBoss = document.getElementById('isBoss').value;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
 
                     //バトルオーダー
-                    currentMapTip.events[evtNameKey]['battleOrders'] = new Object();
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'] = new Object();
                     var orders = document.getElementsByName("battle_order");
                     for(var i=0; i<orders.length; i++) {
 
@@ -5023,57 +5265,57 @@ function registEventToObj(evtName, objFlg = false) {
                         switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
                             case 'talk':
 
-                                currentMapTip.events[evtNameKey]['battleOrders'][i] = new Object();
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i] = new Object();
 
                                 //まずはタイプを設定
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['type'] = 'talk';
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['type'] = 'talk';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var wipeEle = orders[i].getElementsByClassName("talkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName;
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['wipe'] = imgName;
 
                                 var talkEle = orders[i].getElementsByClassName("talkContent");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['content'] = talkEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['content'] = talkEle[0].value; 
                             break;
                             case 'skill':
 
-                                currentMapTip.events[evtNameKey]['battleOrders'][i] = new Object();
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i] = new Object();
 
                                 //まずはタイプを設定
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['type'] = 'skill';
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['type'] = 'skill';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var skillEle = orders[i].getElementsByClassName("skillFrom");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['from'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['from'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTo");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['to'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['to'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillIndex");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillDamage");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['damage'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['damage'] = skillEle[0].value; 
 
                                 var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['wipe'] = imgName; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTalkContent");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['content'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['content'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['shake'] = skillEle[0].value;
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['shake'] = skillEle[0].value;
 
                             break;
                             case 'lose':
-                                currentMapTip.events[evtNameKey]['battleOrders'][i] = new Object();
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i] = new Object();
 
                                 //まずはタイプを設定
-                                currentMapTip.events[evtNameKey]['battleOrders'][i]['type'] = 'lose';
+                                currentMapTip.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['type'] = 'lose';
 
                                 //負けの時はこれ以上何も入れない
 
@@ -5083,18 +5325,18 @@ function registEventToObj(evtName, objFlg = false) {
                     }
 
                 } else {
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
-                    currentMapTip.object.events[evtNameKey].charaGroup = document.getElementById('charaGroup').value;
-                    currentMapTip.object.events[evtNameKey].isBoss = document.getElementById('isBoss').value;
-                    currentMapTip.object.events[evtNameKey]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
-                    currentMapTip.object.events[evtNameKey]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
-                    currentMapTip.object.events[evtNameKey]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
-                    currentMapTip.object.events[evtNameKey]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
-                    currentMapTip.object.events[evtNameKey]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
-                    currentMapTip.object.events[evtNameKey]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey].charaGroup = document.getElementById('charaGroup').value;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey].isBoss = document.getElementById('isBoss').value;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
 
                     //バトルオーダー
-                    currentMapTip.object.events[evtNameKey]['battleOrders'] = new Object();
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'] = new Object();
                     var orders = document.getElementsByName("battle_order");
                     for(var i=0; i<orders.length; i++) {
 
@@ -5103,57 +5345,57 @@ function registEventToObj(evtName, objFlg = false) {
                         switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
                             case 'talk':
 
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i] = new Object();
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i] = new Object();
 
                                 //まずはタイプを設定
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['type'] = 'talk';
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['type'] = 'talk';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var wipeEle = orders[i].getElementsByClassName("talkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName;
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['wipe'] = imgName;
 
                                 var talkEle = orders[i].getElementsByClassName("talkContent");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['content'] = talkEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['content'] = talkEle[0].value; 
                             break;
                             case 'skill':
 
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i] = new Object();
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i] = new Object();
 
                                 //まずはタイプを設定
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['type'] = 'skill';
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['type'] = 'skill';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var skillEle = orders[i].getElementsByClassName("skillFrom");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['from'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['from'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTo");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['to'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['to'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillIndex");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillDamage");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['damage'] = skillEle[0].value;
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['damage'] = skillEle[0].value;
 
                                 var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['wipe'] = imgName; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['wipe'] = imgName; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTalkContent");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['content'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['content'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['shake'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['shake'] = skillEle[0].value; 
 
                             break;
                             case 'lose':
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i] = new Object();
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i] = new Object();
 
                                 //まずはタイプを設定
-                                currentMapTip.object.events[evtNameKey]['battleOrders'][i]['type'] = 'lose';
+                                currentMapTip.object.events[evtGrpIndex][evtNameKey]['battleOrders'][i]['type'] = 'lose';
 
                                 //負けの時はこれ以上何も入れない
 
@@ -5167,17 +5409,17 @@ function registEventToObj(evtName, objFlg = false) {
             } else {
                 //既存のイベントの場合
                 if (objFlg == false) {
-                    currentMapTip.events[currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
-                    currentMapTip.events[currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
-                    currentMapTip.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
-                    currentMapTip.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
-                    currentMapTip.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
-                    currentMapTip.events[currentRegisteredEvent]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
-                    currentMapTip.events[currentRegisteredEvent]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
-                    currentMapTip.events[currentRegisteredEvent]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
 
                     //バトルオーダー
-                    currentMapTip.events[currentRegisteredEvent]['battleOrders'] = new Object(); //既存の場合でも一から全部入れ直す
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'] = new Object(); //既存の場合でも一から全部入れ直す
                     var orders = document.getElementsByName("battle_order");
                     for(var i=0; i<orders.length; i++) {
 
@@ -5186,58 +5428,58 @@ function registEventToObj(evtName, objFlg = false) {
                         switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
                             case 'talk':
 
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
 
                                 //まずはタイプを設定
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'talk';
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['type'] = 'talk';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var wipeEle = orders[i].getElementsByClassName("talkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName;
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName;
 
                                 var talkEle = orders[i].getElementsByClassName("talkContent");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['content'] = talkEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['content'] = talkEle[0].value; 
                             break;
                             case 'skill':
 
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
 
                                 //まずはタイプを設定
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'skill';
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['type'] = 'skill';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var skillEle = orders[i].getElementsByClassName("skillFrom");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['from'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['from'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTo");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['to'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['to'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillIndex");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillDamage");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['damage'] = skillEle[0].value;
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['damage'] = skillEle[0].value;
 
                                 var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName; 
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTalkContent");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['content'] = skillEle[0].value; 
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['content'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['shake'] = skillEle[0].value;
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['shake'] = skillEle[0].value;
 
                             break;
                             case 'lose':
 
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
 
                                 //まずはタイプを設定
-                                currentMapTip.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'lose';
+                                currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['type'] = 'lose';
 
                                 //負けの時はこれ以上何も入れない
 
@@ -5246,17 +5488,17 @@ function registEventToObj(evtName, objFlg = false) {
                     }
 
                 } else {
-                    currentMapTip.object.events[currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
-                    currentMapTip.object.events[currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
-                    currentMapTip.object.events[currentRegisteredEvent]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['charaGroup'] = document.getElementById('charaGroup').value;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['isBoss'] = document.getElementById('isBoss').value;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chara1'] = document.getElementById('chara1').innerText == "キャラ1"             ? "" : document.getElementById('chara1').title;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chara2'] = document.getElementById('chara2').innerText == "キャラ2（敵メイン）"   ? "" : document.getElementById('chara2').title;;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chara3'] = document.getElementById('chara3').innerText == "キャラ3"             ? "" : document.getElementById('chara3').title;;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chara4'] = document.getElementById('chara4').innerText == "キャラ4"             ? "" : document.getElementById('chara4').title;;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chara5'] = document.getElementById('chara5').innerText == "キャラ5（味方メイン）" ? "" : document.getElementById('chara5').title;;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chara6'] = document.getElementById('chara6').innerText == "キャラ6"             ? "" : document.getElementById('chara6').title;;
 
                     //バトルオーダー
-                    currentMapTip.object.events[currentRegisteredEvent]['battleOrders'] = new Object(); //既存の場合でも一から全部入れ直す
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'] = new Object(); //既存の場合でも一から全部入れ直す
                     var orders = document.getElementsByName("battle_order");
                     for(var i=0; i<orders.length; i++) {
 
@@ -5265,58 +5507,58 @@ function registEventToObj(evtName, objFlg = false) {
                         switch(orders[i].attributes[1].nodeValue){ //なんかよく分からんけどこれでいけた、byNameわからん
                             case 'talk':
 
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
 
                                 //まずはタイプを設定
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'talk';
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['type'] = 'talk';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var wipeEle = orders[i].getElementsByClassName("talkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName;
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName;
 
                                 var talkEle = orders[i].getElementsByClassName("talkContent");
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['content'] = talkEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['content'] = talkEle[0].value; 
                             break;
                             case 'skill':
 
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
 
                                 //まずはタイプを設定
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'skill';
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['type'] = 'skill';
                                 
                                 //次にタイプ独自の設定値を設定していく
                                 var skillEle = orders[i].getElementsByClassName("skillFrom");
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['from'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['from'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTo");
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['to'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['to'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillIndex");
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['skillIndex'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillDamage");
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['damage'] = skillEle[0].value;
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['damage'] = skillEle[0].value;
 
                                 var wipeEle = orders[i].getElementsByClassName("skillTalkWipe");
                                 var fullSrc = decodeURI(wipeEle[0].currentSrc);
                                 var imgName = fullSrc.split("/").reverse()[0];
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName; 
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['wipe'] = imgName; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillTalkContent");
                                 currentMapTip.object.object.events[currentRegisteredEvent]['battleOrders'][i]['content'] = skillEle[0].value; 
 
                                 var skillEle = orders[i].getElementsByClassName("skillShakeFlg");
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['shake'] = skillEle[0].value;
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['shake'] = skillEle[0].value;
 
                             break;
                             case 'lose':
 
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i] = new Object(); //リセット
 
                                 //まずはタイプを設定
-                                currentMapTip.object.events[currentRegisteredEvent]['battleOrders'][i]['type'] = 'lose';
+                                currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['battleOrders'][i]['type'] = 'lose';
 
                                 //負けの時はこれ以上何も入れない
 
@@ -5334,17 +5576,17 @@ function registEventToObj(evtName, objFlg = false) {
                     //判定はどうしよう、チェックしてる方？
                     if (toolEventType == "get") {
                     //ひろい
-                        currentMapTip.events[evtNameKey] = new Object(); 
-                        currentMapTip.events[evtNameKey].type = toolEventType;
-                        currentMapTip.events[evtNameKey].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][evtNameKey].type = toolEventType;
+                        currentMapTip.events[evtGrpIndex][evtNameKey].toolId = document.getElementById('selectedTool').value;
                     } else {
                     //使用 toolEventType == "use"
-                        currentMapTip.events[evtNameKey] = new Object(); 
-                        currentMapTip.events[evtNameKey].type = toolEventType;
-                        currentMapTip.events[evtNameKey].toolId = document.getElementById('selectedTool').value;
-                        currentMapTip.events[evtNameKey].OKtalkContent = document.getElementById('OKtalkContent').value;
-                        currentMapTip.events[evtNameKey].NGtalkContent = document.getElementById('NGtalkContent').value;
-                        currentMapTip.events[evtNameKey].delToolFlg = document.getElementById('delToolFlg').value;
+                        currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][evtNameKey].type = toolEventType;
+                        currentMapTip.events[evtGrpIndex][evtNameKey].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.events[evtGrpIndex][evtNameKey].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.events[evtGrpIndex][evtNameKey].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.events[evtGrpIndex][evtNameKey].delToolFlg = document.getElementById('delToolFlg').value;
                         var selectedWipeImage = document.getElementById('selectedWipeImage');
                         var fullSrc = decodeURI(selectedWipeImage.src);
                         var imgName = fullSrc.split("/").reverse()[0]
@@ -5352,23 +5594,23 @@ function registEventToObj(evtName, objFlg = false) {
                             //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                             //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                         } else {
-                            currentMapTip.events[evtNameKey].wipe = imgName;
+                            currentMapTip.events[evtGrpIndex][evtNameKey].wipe = imgName;
                         }
                     }
                 } else {
                     if (toolEventType == "get") {
                     //ひろい
-                        currentMapTip.object.events[evtNameKey] = new Object(); 
-                        currentMapTip.object.events[evtNameKey].type = toolEventType;
-                        currentMapTip.object.events[evtNameKey].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].type = toolEventType;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].toolId = document.getElementById('selectedTool').value;
                     } else {
                     //使用 toolEventType == "use"
-                        currentMapTip.object.events[evtNameKey] = new Object(); 
-                        currentMapTip.object.events[evtNameKey].type = toolEventType;
-                        currentMapTip.object.events[evtNameKey].toolId = document.getElementById('selectedTool').value
-                        currentMapTip.object.events[evtNameKey].OKtalkContent = document.getElementById('OKtalkContent').value;
-                        currentMapTip.object.events[evtNameKey].NGtalkContent = document.getElementById('NGtalkContent').value;
-                        currentMapTip.object.events[evtNameKey].delToolFlg = document.getElementById('delToolFlg').value;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].type = toolEventType;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].toolId = document.getElementById('selectedTool').value
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey].delToolFlg = document.getElementById('delToolFlg').value;
                         var selectedWipeImage = document.getElementById('selectedWipeImage');
                         var fullSrc = decodeURI(selectedWipeImage.src);
                         var imgName = fullSrc.split("/").reverse()[0]
@@ -5376,7 +5618,7 @@ function registEventToObj(evtName, objFlg = false) {
                             //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                             //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                         } else {
-                            currentMapTip.object.events[evtNameKey].wipe = imgName;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].wipe = imgName;
                         }
                     }
                 }
@@ -5386,15 +5628,15 @@ function registEventToObj(evtName, objFlg = false) {
                     //判定はどうしよう、チェックしてる方？
                     if (toolEventType == "get") {
                     //ひろい
-                        currentMapTip.events[currentRegisteredEvent].type = toolEventType;
-                        currentMapTip.events[currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
                     } else {
                     //使用 toolEventType == "use"
-                        currentMapTip.events[currentRegisteredEvent].type = toolEventType;
-                        currentMapTip.events[currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
-                        currentMapTip.events[currentRegisteredEvent].OKtalkContent = document.getElementById('OKtalkContent').value;
-                        currentMapTip.events[currentRegisteredEvent].NGtalkContent = document.getElementById('NGtalkContent').value;
-                        currentMapTip.events[currentRegisteredEvent].delToolFlg = document.getElementById('delToolFlg').value;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent].delToolFlg = document.getElementById('delToolFlg').value;
                         var selectedWipeImage = document.getElementById('selectedWipeImage');
                         var fullSrc = decodeURI(selectedWipeImage.src);
                         var imgName = fullSrc.split("/").reverse()[0]
@@ -5402,21 +5644,21 @@ function registEventToObj(evtName, objFlg = false) {
                             //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                             //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                         } else {
-                            currentMapTip.events[currentRegisteredEvent].wipe = imgName;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].wipe = imgName;
                         }
                     }
                 } else {
                     if (toolEventType == "get") {
                     //ひろい
-                        currentMapTip.object.events[currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].type = toolEventType;
                         currentMapTip.object.events[evtNacurrentRegisteredEventmeKey].toolId = document.getElementById('selectedTool').value;
                     } else {
                     //使用 toolEventType == "use"
-                        currentMapTip.object.events[currentRegisteredEvent].type = toolEventType;
-                        currentMapTip.object.events[currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
-                        currentMapTip.object.events[currentRegisteredEvent].OKtalkContent = document.getElementById('OKtalkContent').value;
-                        currentMapTip.object.events[currentRegisteredEvent].NGtalkContent = document.getElementById('NGtalkContent').value;
-                        currentMapTip.object.events[currentRegisteredEvent].delToolFlg = document.getElementById('delToolFlg').value;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].type = toolEventType;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].toolId = document.getElementById('selectedTool').value;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].OKtalkContent = document.getElementById('OKtalkContent').value;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].NGtalkContent = document.getElementById('NGtalkContent').value;
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].delToolFlg = document.getElementById('delToolFlg').value;
                         var selectedWipeImage = document.getElementById('selectedWipeImage');
                         var fullSrc = decodeURI(selectedWipeImage.src);
                         var imgName = fullSrc.split("/").reverse()[0]
@@ -5424,7 +5666,7 @@ function registEventToObj(evtName, objFlg = false) {
                             //ワイプを選択していない時の分岐。とりあえず何もしない仕様。
                             //「なし」と言う文字列を入れる仕様に変更した際はここにロジックを書く。
                         } else {
-                            currentMapTip.object.events[currentRegisteredEvent].wipe = imgName;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].wipe = imgName;
                         }
                     }
                 }
@@ -5438,28 +5680,28 @@ function registEventToObj(evtName, objFlg = false) {
                     //shake、reaction、animationの3つがある
                     switch (currentEffectType) {
                         case 'shake':
-                            currentMapTip.events[evtNameKey] = new Object(); 
-                            currentMapTip.events[evtNameKey].type = 'shake'; //shake
-                            currentMapTip.events[evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
+                            currentMapTip.events[evtGrpIndex][evtNameKey].type = 'shake'; //shake
+                            currentMapTip.events[evtGrpIndex][evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey].sound = document.getElementById('selectedSound').innerText;
                         break;
 
                         case 'reaction':
-                            currentMapTip.events[evtNameKey] = new Object(); 
-                            currentMapTip.events[evtNameKey].type = 'reaction'; //reaction
-                            currentMapTip.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
+                            currentMapTip.events[evtGrpIndex][evtNameKey].type = 'reaction'; //reaction
+                            currentMapTip.events[evtGrpIndex][evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
                         break;
 
                         case 'animation':
-                            currentMapTip.events[evtNameKey] = new Object();
-                            currentMapTip.events[evtNameKey].type = 'animation'; //animation
-                            currentMapTip.events[evtNameKey].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
-                            currentMapTip.events[evtNameKey].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
-                            currentMapTip.events[evtNameKey].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
-                            currentMapTip.events[evtNameKey].animationCells = tmpAnimationCells; //アニメーション対象のセル
-                            currentMapTip.events[evtNameKey].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
-                            currentMapTip.events[evtNameKey].sound = document.getElementById("selectedSound").innerText;//音
+                            currentMapTip.events[evtGrpIndex][evtNameKey] = new Object();
+                            currentMapTip.events[evtGrpIndex][evtNameKey].type = 'animation'; //animation
+                            currentMapTip.events[evtGrpIndex][evtNameKey].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.events[evtGrpIndex][evtNameKey].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.events[evtGrpIndex][evtNameKey].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.events[evtGrpIndex][evtNameKey].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.events[evtGrpIndex][evtNameKey].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.events[evtGrpIndex][evtNameKey].sound = document.getElementById("selectedSound").innerText;//音
 
                         break;
                     }
@@ -5468,28 +5710,28 @@ function registEventToObj(evtName, objFlg = false) {
                     //shake、reaction、animationの3つがある
                     switch (currentEffectType) {
                         case 'shake':
-                            currentMapTip.object.events[evtNameKey] = new Object(); 
-                            currentMapTip.object.events[evtNameKey].type = 'shake'; //shake
-                            currentMapTip.object.events[evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;          
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].type = 'shake'; //shake
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].sound = document.getElementById('selectedSound').innerText;          
                         break;
 
                         case 'reaction':
-                            currentMapTip.object.events[evtNameKey] = new Object(); 
-                            currentMapTip.object.events[evtNameKey].type = 'reaction'; //reaction
-                            currentMapTip.object.events[evtNameKey].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.events[evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].type = 'reaction'; //reaction
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].reactType = document.getElementById('selectedReaction').innerText;
                         break;
 
                         case 'animation':
-                            currentMapTip.object.events[evtNameKey] = new Object();
-                            currentMapTip.object.events[evtNameKey].type = 'animation'; //animation
-                            currentMapTip.object.events[evtNameKey].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
-                            currentMapTip.object.events[evtNameKey].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
-                            currentMapTip.object.events[evtNameKey].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
-                            currentMapTip.object.events[evtNameKey].animationCells = tmpAnimationCells; //アニメーション対象のセル
-                            currentMapTip.object.events[evtNameKey].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
-                            currentMapTip.object.events[evtNameKey].sound = document.getElementById("selectedSound").innerText;//音
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object();
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].type = 'animation'; //animation
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey].sound = document.getElementById("selectedSound").innerText;//音
                         break;
                     }
                 }
@@ -5500,25 +5742,25 @@ function registEventToObj(evtName, objFlg = false) {
                     //shake、reaction、animationの3つがある
                     switch (currentEffectType) {
                         case 'shake':
-                            currentMapTip.events[currentRegisteredEvent].type = 'shake'; //shake
-                            currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].type = 'shake'; //shake
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
                         break;
 
                         case 'reaction':
-                            currentMapTip.events[currentRegisteredEvent].type = 'reaction'; //reaction
-                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.events[currentRegisteredEvent].reactType = document.getElementById('selectedReaction').innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].type = 'reaction'; //reaction
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].reactType = document.getElementById('selectedReaction').innerText;
                         break;
 
                         case 'animation':
-                            currentMapTip.events[currentRegisteredEvent].type = 'animation'; //animation
-                            currentMapTip.events[currentRegisteredEvent].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
-                            currentMapTip.events[currentRegisteredEvent].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
-                            currentMapTip.events[currentRegisteredEvent].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
-                            currentMapTip.events[currentRegisteredEvent].animationCells = tmpAnimationCells; //アニメーション対象のセル
-                            currentMapTip.events[currentRegisteredEvent].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
-                            currentMapTip.events[currentRegisteredEvent].sound = document.getElementById("selectedSound").innerText;//音
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].type = 'animation'; //animation
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent].sound = document.getElementById("selectedSound").innerText;//音
                         break;
                     }
                 } else {
@@ -5526,26 +5768,26 @@ function registEventToObj(evtName, objFlg = false) {
                     //shake、reaction、animationの3つがある
                     switch (currentEffectType) {
                         case 'shake':
-                            //currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
-                            currentMapTip.object.events[currentRegisteredEvent].type = 'shake'; //shake
-                            currentMapTip.object.events[currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
-                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;          
+                            //currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent] = new Object(); 
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].type = 'shake'; //shake
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].shakeType = document.getElementById('selectedShakeType').innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;          
                         break;
 
                         case 'reaction':
-                            currentMapTip.object.events[currentRegisteredEvent].type = 'reaction'; //reaction
-                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
-                            currentMapTip.object.events[currentRegisteredEvent].reactType = document.getElementById('selectedReaction').innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].type = 'reaction'; //reaction
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].sound = document.getElementById('selectedSound').innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].reactType = document.getElementById('selectedReaction').innerText;
                         break;
 
                         case 'animation':
-                            currentMapTip.object.events[currentRegisteredEvent].type = 'animation'; //animation
-                            currentMapTip.object.events[currentRegisteredEvent].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
-                            currentMapTip.object.events[currentRegisteredEvent].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
-                            currentMapTip.object.events[currentRegisteredEvent].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
-                            currentMapTip.object.events[currentRegisteredEvent].animationCells = tmpAnimationCells; //アニメーション対象のセル
-                            currentMapTip.object.events[currentRegisteredEvent].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
-                            currentMapTip.object.events[currentRegisteredEvent].sound = document.getElementById("selectedSound").innerText;//音
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].type = 'animation'; //animation
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].animeType = document.getElementById("selectedAnimationType").innerText; //flashとかobjectとか
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].flashAnimeType = document.getElementById("selectedFlashAnimation").innerText; //フラッシュアニメーションタイプ
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].objectAnimeType = document.getElementById("currentMapChipName").innerText //オブジェクトアニメーションタイプ
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].animationCells = tmpAnimationCells; //アニメーション対象のセル
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].shakeType = document.getElementById("selectedShakeType").innerText;//揺れフラグ
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].sound = document.getElementById("selectedSound").innerText;//音
                         break;
                     }
                 }
@@ -5578,17 +5820,17 @@ function registEventToObj(evtName, objFlg = false) {
 
                     //チップnでループする必要あり
 
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
         
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[evtNameKey].drawSpeed =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][evtNameKey].drawSpeed =　event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.events[evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.events[evtGrpIndex][evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -5596,44 +5838,44 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetMoveChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.events[evtNameKey][chipNameKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['fromX'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['fromX'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['fromY'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['fromY'] = event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['orders'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['orders'] = event1.innerText;
                         });
 
                         //finishDelFlg
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['finishDelFlg'] = event1.value;
+                            if (event1.checked) currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['finishDelFlg'] = event1.value;
                         });
 
                         //finishSound
                         var finishSoundEle = event.getElementsByClassName("finishSound");
-                        currentMapTip.events[evtNameKey][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
+                        currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.events[evtNameKey][chipNameKey]['slideFlg'] = event1.value;
+                            if (event1.checked) currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['slideFlg'] = event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['fixDir'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['fixDir'] = event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -5642,7 +5884,7 @@ function registEventToObj(evtName, objFlg = false) {
                             if (event1.innerHTML != "") {
                                 var objTxt = event1.getElementsByClassName("objTxt");
                                 Array.from(objTxt).forEach(function(event2) {
-                                    currentMapTip.events[evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                    currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
                                 });
                             }
                         });
@@ -5650,24 +5892,24 @@ function registEventToObj(evtName, objFlg = false) {
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.events[evtNameKey]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.events[evtGrpIndex][evtNameKey]['chip_0']; //最初のやつは削除
 
                 } else {
                     //新規でオブジェクトイベントの時
 
                     //チップnでループする必要あり
 
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
         
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[evtNameKey].drawSpeed = event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][evtNameKey].drawSpeed = event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.object.events[evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -5675,44 +5917,44 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetMoveChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.object.events[evtNameKey][chipNameKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromX'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['fromX'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['fromY'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['fromY'] = event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['orders'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['orders'] = event1.innerText;
                         });
 
                         //finishDelFlg
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['finishDelFlg'] = event1.value;
+                            if (event1.checked) currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['finishDelFlg'] = event1.value;
                         });
 
                         //finishSound
                         var finishSoundEle = event.getElementsByClassName("finishSound");
-                        currentMapTip.object.events[evtNameKey][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[evtNameKey][chipNameKey]['slideFlg'] = event1.value;
+                            if (event1.checked) currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['slideFlg'] = event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['fixDir'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['fixDir'] = event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -5721,7 +5963,7 @@ function registEventToObj(evtName, objFlg = false) {
                             if (event1.innerHTML != "") {
                                 var objTxt = event1.getElementsByClassName("objTxt");
                                 Array.from(objTxt).forEach(function(event2) {
-                                    currentMapTip.object.events[evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                    currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
                                 });
                             }
                         });
@@ -5729,7 +5971,7 @@ function registEventToObj(evtName, objFlg = false) {
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.object.events[evtNameKey]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.object.events[evtGrpIndex][evtNameKey]['chip_0']; //最初のやつは削除
                 }
 
             } else {
@@ -5738,17 +5980,17 @@ function registEventToObj(evtName, objFlg = false) {
                     //マップイベントの場合
                     //チップnでループする必要あり
 
-                    currentMapTip.events[currentRegisteredEvent] = new Object(); //既存の場合も初期化の意味で同じ処理にしておく
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent] = new Object(); //既存の場合も初期化の意味で同じ処理にしておく
         
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[currentRegisteredEvent].drawSpeed = event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][currentRegisteredEvent].drawSpeed = event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.events[currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
 
@@ -5757,44 +5999,44 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetMoveChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.events[currentRegisteredEvent][chipNameKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['fromX'] =　event1.innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['fromX'] =　event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['fromY'] =　event1.innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['fromY'] =　event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['orders'] =　event1.innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['orders'] =　event1.innerText;
                         });
 
                         //finishDelFlg
                         var finishDelFlg = event.getElementsByClassName("finishDelFlg");
                         Array.from(finishDelFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['finishDelFlg'] =　event1.value;
                         });
 
                         //finishSound
                         var finishSoundEle = event.getElementsByClassName("finishSound");
-                        currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.events[currentRegisteredEvent][chipNameKey]['slideFlg'] =　event1.value;
+                            if (event1.checked) currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['slideFlg'] =　event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['fixDir'] =　event1.innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['fixDir'] =　event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -5803,7 +6045,7 @@ function registEventToObj(evtName, objFlg = false) {
                             if (event1.innerHTML != "") {
                                 var objTxt = event1.getElementsByClassName("objTxt");
                                 Array.from(objTxt).forEach(function(event2) {
-                                    currentMapTip.events[currentRegisteredEvent][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
                                 });
                             }
                         });
@@ -5811,23 +6053,23 @@ function registEventToObj(evtName, objFlg = false) {
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.events[currentRegisteredEvent]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chip_0']; //最初のやつは削除
                 } else {
                     //既存でオブジェクトイベントの時
 
                     //チップnでループする必要あり
 
-                    currentMapTip.object.events[currentRegisteredEvent] = new Object(); //既存の場合も初期化の意味で同じ処理にしておく
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent] = new Object(); //既存の場合も初期化の意味で同じ処理にしておく
         
                     //ムーブスピード
                     var moveSpeed = document.getElementsByClassName("moveSpeed");
                     Array.from(moveSpeed).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].drawSpeed = event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].drawSpeed = event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.object.events[currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -5835,42 +6077,44 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetMoveChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.object.events[currentRegisteredEvent][chipNameKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("fromX");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromX'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['fromX'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("fromY");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fromY'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['fromY'] = event1.innerText;
                         });
 
                         //orders
                         var orders = event.getElementsByClassName("orders");
                         Array.from(orders).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['orders'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['orders'] = event1.innerText;
+                        });
+
+                        //finishDelFlg
+                        var finishDelFlg = event.getElementsByClassName("finishDelFlg");
+                        Array.from(finishDelFlg).forEach(function(event1) {
+                            if (event1.checked) currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['finishDelFlg'] = event1.value;
                         });
 
                         //finishSound
                         var finishSoundEle = event.getElementsByClassName("finishSound");
-                        currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
-
-                        //finishSound
-                        var finishSoundEle = event.getElementsByClassName("finishSound");
-                        currentMapTip.events[currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['finishSound'] = finishSoundEle[0].nextElementSibling.nextElementSibling.nextElementSibling.innerText
 
                         //slideFlg
                         var slideFlg = event.getElementsByClassName("slideFlg");
                         Array.from(slideFlg).forEach(function(event1) {
-                            if (event1.checked) currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['slideFlg'] = event1.value;
+                            if (event1.checked) currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['slideFlg'] = event1.value;
                         });
 
                         //fixDir
                         var fixDir = event.getElementsByClassName("fixDir");
                         Array.from(fixDir).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['fixDir'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['fixDir'] = event1.innerText;
                         });
 
                         //追加オブジェクト
@@ -5879,7 +6123,7 @@ function registEventToObj(evtName, objFlg = false) {
                             if (event1.innerHTML != "") {
                                 var objTxt = event1.getElementsByClassName("objTxt");
                                 Array.from(objTxt).forEach(function(event2) {
-                                    currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
+                                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['newMoveObj'] = JSON.parse(event2.innerText);
                                 });
                             }
                         });
@@ -5887,7 +6131,7 @@ function registEventToObj(evtName, objFlg = false) {
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.object.events[currentRegisteredEvent]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chip_0']; //最初のやつは削除
                 }
             }
 
@@ -5917,12 +6161,12 @@ function registEventToObj(evtName, objFlg = false) {
 
                     //シーンイベントnでループする必要あり
 
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
         
                     //カットシーン
                     var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
                     var imgName = fullSrc.split("/").reverse()[0];
-                    currentMapTip.events[evtNameKey]['cutSceneSrc'] = imgName;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['cutSceneSrc'] = imgName;
 
                     //ここからシーンイベントごと
                     var tmpIndex = 0;
@@ -5930,50 +6174,50 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetSceneEventContainer).forEach(function(event) {
 
                         var sceneEvtKey = "sceneEvt_" + tmpIndex;
-                        currentMapTip.events[evtNameKey][sceneEvtKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][evtNameKey][sceneEvtKey] = new Object(); 
 
                         //wipeSrc(※getProjectDataの場合何もしないのに注意！)
                         var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
                         Array.from(selectedWipeImage).forEach(function(event1) {
                             var fullSrc = decodeURI(event1.src);
                             var imgName = fullSrc.split("/").reverse()[0];
-                            if (imgName != 'getProjectData') currentMapTip.events[evtNameKey][sceneEvtKey]['wipeSrc'] = imgName;
+                            if (imgName != 'getProjectData') currentMapTip.events[evtGrpIndex][evtNameKey][sceneEvtKey]['wipeSrc'] = imgName;
                         });
 
                         //talkContent
                         var talkContent = event.getElementsByClassName("talkContent");
                         Array.from(talkContent).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][sceneEvtKey]['talkContent'] =　event1.value;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][sceneEvtKey]['talkContent'] =　event1.value;
                         });
 
                         //shakeType
                         var selectedShakeType = event.getElementsByClassName("selectedShakeType");
                         Array.from(selectedShakeType).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.events[evtNameKey][sceneEvtKey]['shakeType'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.events[evtGrpIndex][evtNameKey][sceneEvtKey]['shakeType'] =　event1.innerText;
                         });
 
                         //sound
                         var selectedSound = event.getElementsByClassName("selectedSound");
                         Array.from(selectedSound).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.events[evtNameKey][sceneEvtKey]['sound'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.events[evtGrpIndex][evtNameKey][sceneEvtKey]['sound'] =　event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.events[evtNameKey]['sceneEvt_0']; //最初のやつは削除
+                    delete currentMapTip.events[evtGrpIndex][evtNameKey]['sceneEvt_0']; //最初のやつは削除
 
                 } else {
                     //新規でオブジェクトイベントの時
 
                     //シーンイベントnでループする必要あり
 
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
         
                     //カットシーン
                     var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
                     var imgName = fullSrc.split("/").reverse()[0];
-                    currentMapTip.object.events[evtNameKey]['cutSceneSrc'] = imgName;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['cutSceneSrc'] = imgName;
 
                     //ここからシーンイベントごと
                     var tmpIndex = 0;
@@ -5981,38 +6225,38 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetSceneEventContainer).forEach(function(event) {
 
                         var sceneEvtKey = "sceneEvt_" + tmpIndex;
-                        currentMapTip.object.events[evtNameKey][sceneEvtKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey][sceneEvtKey] = new Object(); 
 
                         //wipeSrc(※getProjectDataの場合何もしないのに注意！)
                         var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
                         Array.from(selectedWipeImage).forEach(function(event1) {
                             var fullSrc = decodeURI(event1.src);
                             var imgName = fullSrc.split("/").reverse()[0]
-                            if (imgName != 'getProjectData') currentMapTip.object.events[evtNameKey][sceneEvtKey]['wipeSrc'] =　imgName;
+                            if (imgName != 'getProjectData') currentMapTip.object.events[evtGrpIndex][evtNameKey][sceneEvtKey]['wipeSrc'] =　imgName;
                         });
 
                         //talkContent
                         var talkContent = event.getElementsByClassName("talkContent");
                         Array.from(talkContent).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][sceneEvtKey]['talkContent'] =　event1.value;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][sceneEvtKey]['talkContent'] =　event1.value;
                         });
 
                         //shakeType
                         var selectedShakeType = event.getElementsByClassName("selectedShakeType");
                         Array.from(selectedShakeType).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.object.events[evtNameKey][sceneEvtKey]['shakeType'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.object.events[evtGrpIndex][evtNameKey][sceneEvtKey]['shakeType'] =　event1.innerText;
                         });
 
                         //sound
                         var selectedSound = event.getElementsByClassName("selectedSound");
                         Array.from(selectedSound).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.object.events[evtNameKey][sceneEvtKey]['sound'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.object.events[evtGrpIndex][evtNameKey][sceneEvtKey]['sound'] =　event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.object.events[evtNameKey]['sceneEvt_0']; //最初のやつは削除
+                    delete currentMapTip.object.events[evtGrpIndex][evtNameKey]['sceneEvt_0']; //最初のやつは削除
 
                 }
 
@@ -6031,12 +6275,12 @@ function registEventToObj(evtName, objFlg = false) {
 
                     //シーンイベントnでループする必要あり
 
-                    currentMapTip.events[currentRegisteredEvent] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent] = new Object(); 
         
                     //カットシーン
                     var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
                     var imgName = fullSrc.split("/").reverse()[0];
-                    currentMapTip.events[currentRegisteredEvent]['cutSceneSrc'] = imgName;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['cutSceneSrc'] = imgName;
 
                     //ここからシーンイベントごと
                     var tmpIndex = 0;
@@ -6044,50 +6288,50 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetSceneEventContainer).forEach(function(event) {
 
                         var sceneEvtKey = "sceneEvt_" + tmpIndex;
-                        currentMapTip.events[currentRegisteredEvent][sceneEvtKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey] = new Object(); 
 
                         //wipeSrc(※getProjectDataの場合何もしないのに注意！)
                         var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
                         Array.from(selectedWipeImage).forEach(function(event1) {
                             var fullSrc = decodeURI(event1.src);
                             var imgName = fullSrc.split("/").reverse()[0]
-                            if (imgName != 'getProjectData') currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['wipeSrc'] =　imgName;
+                            if (imgName != 'getProjectData') currentMapTip.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['wipeSrc'] =　imgName;
                         });
 
                         //talkContent
                         var talkContent = event.getElementsByClassName("talkContent");
                         Array.from(talkContent).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['talkContent'] =　event1.value;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['talkContent'] =　event1.value;
                         });
 
                         //shakeType
                         var selectedShakeType = event.getElementsByClassName("selectedShakeType");
                         Array.from(selectedShakeType).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['shakeType'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['shakeType'] =　event1.innerText;
                         });
 
                         //sound
                         var selectedSound = event.getElementsByClassName("selectedSound");
                         Array.from(selectedSound).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.events[currentRegisteredEvent][sceneEvtKey]['sound'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['sound'] =　event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.events[currentRegisteredEvent]['sceneEvt_0']; //最初のやつは削除
+                    delete currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['sceneEvt_0']; //最初のやつは削除
 
                 } else {
                     //新規でオブジェクトイベントの時
 
                     //シーンイベントnでループする必要あり
 
-                    currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent] = new Object(); 
         
                     //カットシーン
                     var fullSrc = decodeURI(document.getElementById("selectedCutScene").src);
                     var imgName = fullSrc.split("/").reverse()[0];
-                    currentMapTip.object.events[currentRegisteredEvent]['cutSceneSrc'] = imgName;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['cutSceneSrc'] = imgName;
 
                     //ここからシーンイベントごと
                     var tmpIndex = 0;
@@ -6095,38 +6339,38 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(targetSceneEventContainer).forEach(function(event) {
 
                         var sceneEvtKey = "sceneEvt_" + tmpIndex;
-                        currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey] = new Object(); 
 
                         //wipeSrc(※getProjectDataの場合何もしないのに注意！)
                         var selectedWipeImage = event.getElementsByClassName("selectedWipeImage");
                         Array.from(selectedWipeImage).forEach(function(event1) {
                             var fullSrc = decodeURI(event1.src);
                             var imgName = fullSrc.split("/").reverse()[0]
-                            if (imgName != 'getProjectData') currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['wipeSrc'] =　imgName;
+                            if (imgName != 'getProjectData') currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['wipeSrc'] =　imgName;
                         });
 
                         //talkContent
                         var talkContent = event.getElementsByClassName("talkContent");
                         Array.from(talkContent).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['talkContent'] =　event1.value;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['talkContent'] =　event1.value;
                         });
 
                         //shakeType
                         var selectedShakeType = event.getElementsByClassName("selectedShakeType");
                         Array.from(selectedShakeType).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['shakeType'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['shakeType'] =　event1.innerText;
                         });
 
                         //sound
                         var selectedSound = event.getElementsByClassName("selectedSound");
                         Array.from(selectedSound).forEach(function(event1) {
-                            if (event1.innerText != '') currentMapTip.object.events[currentRegisteredEvent][sceneEvtKey]['sound'] =　event1.innerText;
+                            if (event1.innerText != '') currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][sceneEvtKey]['sound'] =　event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.object.events[currentRegisteredEvent]['sceneEvt_0']; //最初のやつは削除
+                    delete currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['sceneEvt_0']; //最初のやつは削除
 
                 }
             }
@@ -6136,22 +6380,22 @@ function registEventToObj(evtName, objFlg = false) {
             if (currentRegisteredEvent == '') {
             // 新規の場合
                 if (objFlg == false) {
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //マップイベントの場合
-                    currentMapTip.events[evtNameKey]['name'] = document.getElementById('newMainChara').alt;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['name'] = document.getElementById('newMainChara').alt;
                 } else {
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //オブジェクトイベントの場合
-                    currentMapTip.object.events[evtNameKey]['name'] = document.getElementById('newMainChara').alt;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['name'] = document.getElementById('newMainChara').alt;
                 }
             } else {
             // 既存の場合
                 if (objFlg == false) {
                     //マップイベントの場合
-                    currentMapTip.events[currentRegisteredEvent]['name'] = document.getElementById('newMainChara').alt;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['name'] = document.getElementById('newMainChara').alt;
                 } else {
                     //オブジェクトイベントの場合
-                    currentMapTip.object.events[currentRegisteredEvent]['name'] = document.getElementById('newMainChara').alt;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['name'] = document.getElementById('newMainChara').alt;
                 }
             }
 
@@ -6161,19 +6405,19 @@ function registEventToObj(evtName, objFlg = false) {
             if (currentRegisteredEvent == '') {
             // 新規の場合
                 if (objFlg == false) {
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //マップイベントの場合
                     var followEventType = document.getElementsByClassName("followEventType");
                     Array.from(followEventType).forEach(function(event) {
 
                         if (event.checked && event.value == 'add'){
                             //addの場合、srcのチェック
-                            currentMapTip.events[evtNameKey]['type'] = 'add';
-                            currentMapTip.events[evtNameKey]['name'] = document.getElementById("followChara").alt;
+                            currentMapTip.events[evtGrpIndex][evtNameKey]['type'] = 'add';
+                            currentMapTip.events[evtGrpIndex][evtNameKey]['name'] = document.getElementById("followChara").alt;
                         } else if (event.checked && event.value == 'del') {
                             //delの場合
-                            currentMapTip.events[evtNameKey]['type'] = 'del';
-                            if (currentMapTip.events[evtNameKey].hasOwnProperty('name')) delete currentMapTip.events[evtNameKey]['name'];
+                            currentMapTip.events[evtGrpIndex][evtNameKey]['type'] = 'del';
+                            if (currentMapTip.events[evtGrpIndex][evtNameKey].hasOwnProperty('name')) delete currentMapTip.events[evtGrpIndex][evtNameKey]['name'];
                         } else {
 
                         }
@@ -6181,19 +6425,19 @@ function registEventToObj(evtName, objFlg = false) {
 
                 } else {
                     //オブジェクトイベントの場合
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
                     //マップイベントの場合
                     var followEventType = document.getElementsByClassName("followEventType");
                     Array.from(followEventType).forEach(function(event) {
 
                         if (event.checked && event.value == 'add'){
                             //addの場合、srcのチェック
-                            currentMapTip.object.events[evtNameKey]['type'] = 'add';
-                            currentMapTip.object.events[evtNameKey]['name'] = document.getElementById("followChara").alt;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey]['type'] = 'add';
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey]['name'] = document.getElementById("followChara").alt;
                         } else if (event.checked && event.value == 'del') {
                             //delの場合
-                            currentMapTip.events[evtNameKey]['type'] = 'del';
-                            if (currentMapTip.object.events[evtNameKey].hasOwnProperty('name')) delete currentMapTip.object.events[evtNameKey]['name'];
+                            currentMapTip.events[evtGrpIndex][evtNameKey]['type'] = 'del';
+                            if (currentMapTip.object.events[evtGrpIndex][evtNameKey].hasOwnProperty('name')) delete currentMapTip.object.events[evtGrpIndex][evtNameKey]['name'];
                         } else {
 
                         }
@@ -6208,12 +6452,12 @@ function registEventToObj(evtName, objFlg = false) {
 
                         if (event.checked && event.value == 'add'){
                             //addの場合、srcのチェック
-                            currentMapTip.events[currentRegisteredEvent]['type'] = 'add';
-                            currentMapTip.events[currentRegisteredEvent]['name'] = document.getElementById("followChara").alt;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['type'] = 'add';
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['name'] = document.getElementById("followChara").alt;
                         } else if (event.checked && event.value == 'del') {
                             //delの場合
-                            currentMapTip.events[currentRegisteredEvent]['type'] = 'del';
-                            if (currentMapTip.events[currentRegisteredEvent].hasOwnProperty('name')) delete currentMapTip.events[currentRegisteredEvent]['name'];
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['type'] = 'del';
+                            if (currentMapTip.events[evtGrpIndex][currentRegisteredEvent].hasOwnProperty('name')) delete currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['name'];
                         } else {
 
                         }
@@ -6226,12 +6470,12 @@ function registEventToObj(evtName, objFlg = false) {
 
                         if (event.checked && event.value == 'add'){
                             //addの場合、srcのチェック
-                            currentMapTip.object.events[currentRegisteredEvent]['type'] = 'add';
-                            currentMapTip.object.events[currentRegisteredEvent]['name'] = document.getElementById("followChara").alt;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['type'] = 'add';
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['name'] = document.getElementById("followChara").alt;
                         } else if (event.checked && event.value == 'del') {
                             //delの場合
-                            currentMapTip.object.events[currentRegisteredEvent]['type'] = 'del';
-                            if (currentMapTip.object.events[currentRegisteredEvent].hasOwnProperty('name')) delete currentMapTip.object.events[currentRegisteredEvent]['name'];
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['type'] = 'del';
+                            if (currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].hasOwnProperty('name')) delete currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['name'];
                         } else {
 
                         }
@@ -6245,29 +6489,29 @@ function registEventToObj(evtName, objFlg = false) {
                 //新規のイベントの場合
                 if (objFlg == false) {
                     //イベント名のキーごとにオブジェクトを作成
-                    currentMapTip.events[evtNameKey] = new Object();
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object();
                     //トークのコンテンツを格納
-                    currentMapTip.events[evtNameKey]['delX'] = document.getElementById('delObjChipX').innerText;
-                    currentMapTip.events[evtNameKey]['delY'] = document.getElementById('delObjChipY').innerText;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.events[evtGrpIndex][evtNameKey]['delY'] = document.getElementById('delObjChipY').innerText;
 
                 } else {
                     //イベント名のキーごとにオブジェクトを作成
                     //currentMapTip.object['events'] = new Object(); これいらないな
-                    currentMapTip.object.events[evtNameKey] = new Object();
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object();
                     //トークのコンテンツを格納
-                    currentMapTip.object.events[evtNameKey]['delX'] = document.getElementById('delObjChipX').innerText;
-                    currentMapTip.object.events[evtNameKey]['delY'] = document.getElementById('delObjChipY').innerText;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey]['delY'] = document.getElementById('delObjChipY').innerText;
                 }
             } else {
                 //既存のイベントの場合
                 //var evtNameKey = getEventKey(evtName, objFlg);
                 if (objFlg == false) {
-                    currentMapTip.events[currentRegisteredEvent]['delX'] = document.getElementById('delObjChipX').innerText;
-                    currentMapTip.events[currentRegisteredEvent]['delY'] = document.getElementById('delObjChipY').innerText;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['delY'] = document.getElementById('delObjChipY').innerText;
 
                 } else {
-                    currentMapTip.object.events[currentRegisteredEvent]['delX'] = document.getElementById('delObjChipX').innerText;
-                    currentMapTip.object.events[currentRegisteredEvent]['delY'] = document.getElementById('delObjChipY').innerText;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['delX'] = document.getElementById('delObjChipX').innerText;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['delY'] = document.getElementById('delObjChipY').innerText;
                 }
             }
 
@@ -6296,29 +6540,29 @@ function registEventToObj(evtName, objFlg = false) {
 
                     //チップnでループする必要あり
 
-                    currentMapTip.events[evtNameKey] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][evtNameKey] = new Object(); 
 
                     //主人公orキャラオブジェクト
                     var targetType = document.getElementsByClassName("targetType");
                     Array.from(targetType).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[evtNameKey].targetType =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][evtNameKey].targetType =　event.value;
                     });
         
                     //横倒しor起き上がり
                     var actionMode = document.getElementsByClassName("actionMode");
                     Array.from(actionMode).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[evtNameKey].actionMode =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][evtNameKey].actionMode =　event.value;
                     });
 
                     //移動後むき
                     var afterDirection = document.getElementsByClassName("afterDirection");
                     Array.from(afterDirection).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[evtNameKey].afterDirection =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][evtNameKey].afterDirection =　event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.events[evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.events[evtGrpIndex][evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -6326,51 +6570,51 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(layDownChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.events[evtNameKey][chipNameKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("X");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['X'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['X'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("Y");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.events[evtNameKey][chipNameKey]['Y'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][evtNameKey][chipNameKey]['Y'] = event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.events[evtNameKey]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.events[evtGrpIndex][evtNameKey]['chip_0']; //最初のやつは削除
 
                 } else {
                     //新規でオブジェクトイベントの時
 
                     //チップnでループする必要あり
 
-                    currentMapTip.object.events[evtNameKey] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey] = new Object(); 
         
                     //主人公orキャラオブジェクト
                     var targetType = document.getElementsByClassName("targetType");
                     Array.from(targetType).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[evtNameKey].targetType =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][evtNameKey].targetType =　event.value;
                     });
         
                     //横倒しor起き上がり
                     var actionMode = document.getElementsByClassName("actionMode");
                     Array.from(actionMode).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[evtNameKey].actionMode =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][evtNameKey].actionMode =　event.value;
                     });
 
                     //移動後むき
                     var afterDirection = document.getElementsByClassName("afterDirection");
                     Array.from(afterDirection).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[evtNameKey].afterDirection =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][evtNameKey].afterDirection =　event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.object.events[evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.object.events[evtGrpIndex][evtNameKey].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -6378,22 +6622,22 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(layDownChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.object.events[evtNameKey][chipNameKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("X");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['X'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['X'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("Y");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.object.events[evtNameKey][chipNameKey]['Y'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][evtNameKey][chipNameKey]['Y'] = event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.object.events[evtNameKey]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.object.events[evtGrpIndex][evtNameKey]['chip_0']; //最初のやつは削除
                 }
 
             } else {
@@ -6402,29 +6646,29 @@ function registEventToObj(evtName, objFlg = false) {
                     //マップイベントの場合
                     //チップnでループする必要あり
 
-                    currentMapTip.events[currentRegisteredEvent] = new Object(); 
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent] = new Object(); 
 
                     //主人公orキャラオブジェクト
                     var targetType = document.getElementsByClassName("targetType");
                     Array.from(targetType).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[currentRegisteredEvent].targetType =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][currentRegisteredEvent].targetType =　event.value;
                     });
         
                     //横倒しor起き上がり
                     var actionMode = document.getElementsByClassName("actionMode");
                     Array.from(actionMode).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[currentRegisteredEvent].actionMode =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][currentRegisteredEvent].actionMode =　event.value;
                     });
 
                     //移動後むき
                     var afterDirection = document.getElementsByClassName("afterDirection");
                     Array.from(afterDirection).forEach(function(event) {
-                        if (event.checked) currentMapTip.events[currentRegisteredEvent].afterDirection =　event.value;
+                        if (event.checked) currentMapTip.events[evtGrpIndex][currentRegisteredEvent].afterDirection =　event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.events[currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.events[evtGrpIndex][currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -6432,51 +6676,51 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(layDownChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.events[currentRegisteredEvent][chipNameKey] = new Object(); 
+                        currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("X");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['X'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['X'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("Y");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.events[currentRegisteredEvent][chipNameKey]['Y'] = event1.innerText;
+                            currentMapTip.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['Y'] = event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.events[currentRegisteredEvent]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.events[evtGrpIndex][currentRegisteredEvent]['chip_0']; //最初のやつは削除
 
                 } else {
                     //新規でオブジェクトイベントの時
 
                     //チップnでループする必要あり
 
-                    currentMapTip.object.events[currentRegisteredEvent] = new Object(); 
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent] = new Object(); 
         
                     //主人公orキャラオブジェクト
                     var targetType = document.getElementsByClassName("targetType");
                     Array.from(targetType).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].targetType =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].targetType =　event.value;
                     });
         
                     //横倒しor起き上がり
                     var actionMode = document.getElementsByClassName("actionMode");
                     Array.from(actionMode).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].actionMode =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].actionMode =　event.value;
                     });
 
                     //移動後むき
                     var afterDirection = document.getElementsByClassName("afterDirection");
                     Array.from(afterDirection).forEach(function(event) {
-                        if (event.checked) currentMapTip.object.events[currentRegisteredEvent].afterDirection =　event.value;
+                        if (event.checked) currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].afterDirection =　event.value;
                     });
 
                     //開始サウンド
                     var startSoundEle = document.getElementById("startSound");
-                    currentMapTip.object.events[currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
+                    currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent].startSound = startSoundEle.nextElementSibling.nextElementSibling.nextElementSibling.innerText;
 
                     //ここからチップごと
                     var tmpIndex = 0;
@@ -6484,22 +6728,22 @@ function registEventToObj(evtName, objFlg = false) {
                     Array.from(layDownChipContainer).forEach(function(event) {
 
                         var chipNameKey = "chip_" + tmpIndex;
-                        currentMapTip.object.events[currentRegisteredEvent][chipNameKey] = new Object(); 
+                        currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey] = new Object(); 
 
                         //fromX,fromY（toはいらない）
                         var fromX = event.getElementsByClassName("X");
                         Array.from(fromX).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['X'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['X'] = event1.innerText;
                         });
                         var fromY = event.getElementsByClassName("Y");
                         Array.from(fromY).forEach(function(event1) {
-                            currentMapTip.object.events[currentRegisteredEvent][chipNameKey]['Y'] = event1.innerText;
+                            currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent][chipNameKey]['Y'] = event1.innerText;
                         });
 
                         tmpIndex++;
                     });
 
-                    delete currentMapTip.object.events[currentRegisteredEvent]['chip_0']; //最初のやつは削除
+                    delete currentMapTip.object.events[evtGrpIndex][currentRegisteredEvent]['chip_0']; //最初のやつは削除
                 }
             }
 

@@ -79,6 +79,17 @@ ol {
     cursor: pointer;
 }
 
+#addEventGroup {
+    background-color: skyblue;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 180px;
+    cursor: pointer;
+    text-align: center;
+}
+
 #addEvent {
     background-color: orange;
     color: white;
@@ -97,6 +108,17 @@ ol {
     padding: 0px;
     margin:0px;
     width: 160px;
+    cursor: pointer;
+    text-align: center;
+}
+
+#deleteEventGroup {
+    background-color: purple;
+    color: white;
+    border-radius: 30px;
+    padding: 0px;
+    margin:0px;
+    width: 180px;
     cursor: pointer;
     text-align: center;
 }
